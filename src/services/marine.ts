@@ -3,12 +3,17 @@ import { distanceKm } from '../lib/geo'
 const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine'
 
 /**
- * Au-delà de cette distance entre le point demandé et la maille du modèle,
- * la donnée décrit une autre masse d'eau. Mesuré : une lagune fermée comme
- * l'étang de Thau se voit attribuer la houle d'une maille en pleine mer à
- * 6,5 km — physiquement absurde pour ce plan d'eau. On le signale.
+ * Le modèle de houle travaille sur une grille de plusieurs kilomètres : tout
+ * point de la côte est forcément recalé au large, c'est normal et la donnée
+ * reste représentative. Mesuré sur les 44 spots de la base : la médiane est
+ * autour de 4 km, et des spots de référence comme Lacanau tombent à 8,5 km.
+ *
+ * Ce n'est donc pas la distance qui trahit une mauvaise masse d'eau — c'est
+ * la nature du plan d'eau (voir le traitement des lagunes dans surf.ts).
+ * Ce seuil ne sert plus qu'à signaler une donnée franchement lointaine,
+ * sans pour autant refuser de la lire.
  */
-const DISTANCE_MAILLE_SUSPECTE_KM = 8
+const DISTANCE_MAILLE_LOINTAINE_KM = 25
 
 /** Un instant de conditions marines, tel que fourni par le modèle */
 export interface ConditionsMarines {
@@ -31,8 +36,8 @@ export interface DonneesMarines {
   temperatureEauC: number | null
   /** distance entre le point demandé et la maille réellement utilisée */
   distanceMailleKm: number | null
-  /** true si la maille est si loin que la donnée décrit une autre masse d'eau */
-  mailleEloignee: boolean
+  /** true si la maille est franchement lointaine : donnée à prendre avec recul */
+  mailleLointaine: boolean
   /** true si le modèle marin ne couvre pas du tout ce point */
   horsCouverture: boolean
 }
@@ -42,7 +47,7 @@ export const MARINE_VIDE: DonneesMarines = {
   previsions: [],
   temperatureEauC: null,
   distanceMailleKm: null,
-  mailleEloignee: false,
+  mailleLointaine: false,
   horsCouverture: true,
 }
 
@@ -130,8 +135,8 @@ export async function fetchMarine(
       previsions,
       temperatureEauC: nombreOuNull(courant?.sea_surface_temperature),
       distanceMailleKm,
-      mailleEloignee:
-        distanceMailleKm !== null && distanceMailleKm > DISTANCE_MAILLE_SUSPECTE_KM,
+      mailleLointaine:
+        distanceMailleKm !== null && distanceMailleKm > DISTANCE_MAILLE_LOINTAINE_KM,
       horsCouverture,
     }
   } catch {

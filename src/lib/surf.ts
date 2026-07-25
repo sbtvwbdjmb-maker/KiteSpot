@@ -122,7 +122,7 @@ export function analyserSurf(
   marine: ConditionsMarines | null,
   lieu: Lieu,
   profil: Profil,
-  contexte: { mailleEloignee: boolean; horsCouverture: boolean },
+  contexte: { mailleLointaine: boolean; horsCouverture: boolean; distanceMailleKm: number | null },
 ): AnalyseSurf {
   const plage = PLAGES_VAGUE[profil.niveau]
   const vide = (raison: string): AnalyseSurf => ({
@@ -134,13 +134,16 @@ export function analyserSurf(
     plageVague: { mini: plage.mini, maxi: plage.maxi },
   })
 
+  // Un plan d'eau fermé n'a pas de houle : le modèle marin y répond quand même,
+  // mais avec les valeurs de la mer ouverte voisine. On refuse de les lire
+  // plutôt que d'annoncer des vagues là où il n'y en a pas.
+  if (lieu.estLagune) {
+    return vide(
+      'Plan d’eau fermé : il n’y a pas de houle ici. C’est un spot d’eau plate, à regarder côté kite.',
+    )
+  }
   if (contexte.horsCouverture || !marine || marine.hauteurVaguesM === null) {
     return vide('Le modèle de houle ne couvre pas ce point. Aucun score surf ne peut être calculé.')
-  }
-  if (contexte.mailleEloignee) {
-    return vide(
-      'La donnée de houle la plus proche décrit une masse d’eau trop éloignée pour représenter ce spot.',
-    )
   }
 
   const hauteur = marine.hauteurVaguesM
@@ -234,6 +237,11 @@ export function analyserSurf(
     score = Math.min(score, 7)
     alertes.push(
       'Orientation du littoral inconnue ici : la qualité du vent n’est pas évaluée, et la note en tient compte.',
+    )
+  }
+  if (contexte.mailleLointaine && contexte.distanceMailleKm !== null) {
+    alertes.push(
+      `Point de houle le plus proche à ${Math.round(contexte.distanceMailleKm)} km : lecture approximative pour ce spot.`,
     )
   }
   if (marine.hauteurVaguesVentM !== null && marine.hauteurVaguesVentM > hauteur * 0.6) {

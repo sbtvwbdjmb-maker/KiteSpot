@@ -108,8 +108,9 @@ export function analyserPourSport(
 
   const marineHoraire = marineDeLHeure(marine, meteoHoraire.heure, estMaintenant)
   const a = analyserSurf(meteoHoraire, marineHoraire, lieu, profil, {
-    mailleEloignee: marine.mailleEloignee,
+    mailleLointaine: marine.mailleLointaine,
     horsCouverture: marine.horsCouverture,
+    distanceMailleKm: marine.distanceMailleKm,
   })
   const v = construireVerdictSurf(a)
 
@@ -182,8 +183,9 @@ export function scoreHorairePourSport(
   if (sport === 'kite') return scoreHoraire(meteoHoraire, lieu, profil)
   const marineHoraire = marine.previsions.find((p) => p.heure === meteoHoraire.heure) ?? null
   return analyserSurf(meteoHoraire, marineHoraire, lieu, profil, {
-    mailleEloignee: marine.mailleEloignee,
+    mailleLointaine: marine.mailleLointaine,
     horsCouverture: marine.horsCouverture,
+    distanceMailleKm: marine.distanceMailleKm,
   }).scoreGlobal
 }
 
@@ -192,6 +194,13 @@ export interface Creneau {
   fin: string
   score: number
 }
+
+/**
+ * Pourquoi aucun créneau n'est proposé. On distingue « il n'y a plus assez
+ * d'heures devant » de « les données manquent » : les deux se ressemblent
+ * dans le code mais ne veulent pas du tout dire la même chose au lecteur.
+ */
+export type RaisonSansCreneau = 'journee-finie' | 'donnees-manquantes' | 'rien-de-bon' | null
 
 /**
  * Meilleure fenêtre de 2 à 4 h consécutives entre maintenant et le coucher du
@@ -204,7 +213,7 @@ export function meilleurCreneauSport(
   lieu: Lieu,
   profil: Profil,
   maintenant: Date,
-): { creneau: Creneau | null; donneesIncompletes: boolean } {
+): { creneau: Creneau | null; raison: RaisonSansCreneau } {
   const fin = new Date(meteo.coucherSoleil).getTime()
   const debut = maintenant.getTime()
 
@@ -212,11 +221,12 @@ export function meilleurCreneauSport(
     const t = new Date(h.heure).getTime()
     return t >= debut - 3600_000 && t <= fin
   })
-  if (eligibles.length < 2) return { creneau: null, donneesIncompletes: true }
+  // Plus assez d'heures de jour devant : ce n'est pas un manque de données
+  if (eligibles.length < 2) return { creneau: null, raison: 'journee-finie' }
 
   const scores = eligibles.map((h) => scoreHorairePourSport(sport, h, marine, lieu, profil))
   const manquants = scores.filter((s) => s === null).length
-  if (manquants === scores.length) return { creneau: null, donneesIncompletes: true }
+  if (manquants === scores.length) return { creneau: null, raison: 'donnees-manquantes' }
 
   let meilleur: { i: number; longueur: number; moyenne: number } | null = null
   for (let longueur = 4; longueur >= 2; longueur--) {
@@ -230,7 +240,7 @@ export function meilleurCreneauSport(
 
   // En dessous de 5/10 de moyenne, il n'y a pas de bon créneau à annoncer
   if (!meilleur || meilleur.moyenne < 5) {
-    return { creneau: null, donneesIncompletes: manquants > 0 }
+    return { creneau: null, raison: manquants > 0 ? 'donnees-manquantes' : 'rien-de-bon' }
   }
 
   const tranche = eligibles.slice(meilleur.i, meilleur.i + meilleur.longueur)
@@ -240,6 +250,6 @@ export function meilleurCreneauSport(
       fin: tranche[tranche.length - 1].heure,
       score: meilleur.moyenne,
     },
-    donneesIncompletes: manquants > 0,
+    raison: null,
   }
 }

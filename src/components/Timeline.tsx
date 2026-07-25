@@ -54,8 +54,8 @@ export function Timeline({
       }))
   }, [jourActif, estAujourdhui, sport, marine, lieu, profil])
 
-  const { creneau, donneesIncompletes } = useMemo(() => {
-    if (!jourActif) return { creneau: null, donneesIncompletes: true }
+  const { creneau, raison } = useMemo(() => {
+    if (!jourActif) return { creneau: null, raison: 'donnees-manquantes' as const }
     // Pour un jour futur, on cherche le créneau depuis son lever de soleil
     const depart = estAujourdhui ? new Date() : new Date(jourActif.leverSoleil)
     return meilleurCreneauSport(
@@ -135,8 +135,17 @@ export function Timeline({
             </span>
           </p>
         ) : (
-          <p className="text-[13px]" style={{ color: 'var(--color-stop)' }}>
-            {donneesIncompletes ? 'Données insuffisantes ce jour-là' : 'Aucun bon créneau'}
+          <p
+            className="text-[13px]"
+            style={{
+              color: raison === 'journee-finie' ? 'var(--color-dim)' : 'var(--color-stop)',
+            }}
+          >
+            {raison === 'journee-finie'
+              ? 'Journée terminée — regarde demain'
+              : raison === 'donnees-manquantes'
+                ? 'Données insuffisantes ce jour-là'
+                : 'Aucun bon créneau'}
           </p>
         )}
       </div>
