@@ -13,15 +13,18 @@ interface Props {
   directionHouleDeg?: number | null
 }
 
-const C = 110 // centre
+const C = 110
 const R_DISQUE = 82
-const R_RIM = 96
+const R_RIM = 98
+const LARGEUR_PLAGE = 9
 
 /**
- * Le cadran de KiteSpot : au lieu d'afficher une direction brute, il dessine
- * le trait de côte du spot et la flèche du vent par-dessus. On voit
- * immédiatement si le vent pousse vers la plage ou vers le large — c'est
- * l'interprétation qu'on doit normalement faire de tête devant une rose des vents.
+ * Le cadran de KiteSpot : une rose des vents qui porte le trait de côte du
+ * spot, avec sa bande de sable, la mer d'un côté et la terre de l'autre.
+ * On voit immédiatement si le vent pousse vers la plage ou vers le large.
+ *
+ * Aucun texte à l'intérieur : les valeurs chiffrées sont déjà lues dans le
+ * bandeau, et les superposer ici brouillait la lecture du dessin.
  */
 export function CadranVent({
   directionDeg,
@@ -31,8 +34,6 @@ export function CadranVent({
   analyse,
   directionHouleDeg = null,
 }: Props) {
-  // Sans analyse de direction, la flèche reste neutre : aucune couleur ne doit
-  // laisser croire qu'on a jugé une orientation qu'on ne connaît pas.
   const couleur = !analyse
     ? 'var(--color-muted)'
     : analyse.score >= 0.8
@@ -42,134 +43,172 @@ export function CadranVent({
         : 'var(--color-stop)'
 
   const description = analyse
-    ? `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds, ${analyse.label} sur ce spot`
+    ? `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds, rafales ${Math.round(rafalesNoeuds)}, ${analyse.label} sur ce spot`
     : `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds. Orientation du littoral inconnue ici.`
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[15rem] sm:max-w-[19rem]">
+    <div className="halo-cadran relative mx-auto aspect-square w-full max-w-[16rem] sm:max-w-[19rem]">
       <svg viewBox="0 0 220 220" className="h-full w-full" role="img" aria-label={description}>
         <defs>
           <clipPath id="disque">
             <circle cx={C} cy={C} r={R_DISQUE} />
           </clipPath>
-          {/* Texture d'eau : de fines lignes horizontales dans la moitié « mer » */}
-          <pattern id="houle" width="10" height="7" patternUnits="userSpaceOnUse">
-            <path d="M0 6 Q2.5 3.4 5 6 T10 6" fill="none" stroke="#1d5a6f" strokeWidth="0.8" opacity="0.35" />
+
+          {/* Dégradé de profondeur : l'eau s'assombrit vers le large */}
+          <linearGradient id="profondeur" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#03202e" />
+            <stop offset="70%" stopColor="#0a3a4d" />
+            <stop offset="100%" stopColor="#0e4a5e" />
+          </linearGradient>
+
+          {/* Houle de surface, plus serrée près du bord */}
+          <pattern id="houle" width="14" height="9" patternUnits="userSpaceOnUse">
+            <path
+              d="M0 7 Q3.5 3.6 7 7 T14 7"
+              fill="none"
+              stroke="#5fb6d4"
+              strokeWidth="0.7"
+              opacity="0.22"
+            />
           </pattern>
+
+          {/* Halo diffus derrière le disque, dans la couleur du verdict */}
           <radialGradient id="halo">
-            <stop offset="65%" stopColor={couleur} stopOpacity="0" />
-            <stop offset="100%" stopColor={couleur} stopOpacity="0.13" />
+            <stop offset="55%" stopColor={couleur} stopOpacity="0" />
+            <stop offset="100%" stopColor={couleur} stopOpacity="0.16" />
           </radialGradient>
         </defs>
 
-        {/* Terre et mer, pivotés selon l'orientation réelle du littoral.
-            Quand elle est inconnue, on ne dessine pas de côte : le cadran
-            redevient une simple rose des vents. */}
+        <circle cx={C} cy={C} r={R_RIM} fill="url(#halo)" />
+
+        {/* Le paysage, pivoté selon l'orientation réelle du littoral */}
         {orientationLittoral !== null ? (
           <g
             clipPath="url(#disque)"
             className="transition-cadran"
             style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${orientationLittoral}deg)` }}
           >
-            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-sea)" />
+            {/* Mer */}
+            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#profondeur)" />
             <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#houle)" />
-            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-land)" />
-            <line x1={C - R_DISQUE} y1={C} x2={C + R_DISQUE} y2={C} stroke="#3d8f7a" strokeWidth="1.25" opacity="0.6" />
+
+            {/* Terre */}
+            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={R_DISQUE} fill="#16241c" />
+
+            {/* Bande de sable le long du rivage */}
+            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={LARGEUR_PLAGE} fill="#c9ad7a" opacity="0.55" />
+            <rect
+              x={C - R_DISQUE}
+              y={C + LARGEUR_PLAGE}
+              width={R_DISQUE * 2}
+              height={4}
+              fill="#8a7550"
+              opacity="0.35"
+            />
+
+            {/* Écume : la ligne de rivage elle-même */}
+            <line
+              x1={C - R_DISQUE}
+              y1={C}
+              x2={C + R_DISQUE}
+              y2={C}
+              stroke="#eaf7fb"
+              strokeWidth="1.4"
+              opacity="0.55"
+            />
           </g>
         ) : (
-          <circle cx={C} cy={C} r={R_DISQUE} fill="var(--color-sea)" opacity="0.5" />
+          <circle cx={C} cy={C} r={R_DISQUE} fill="url(#profondeur)" opacity="0.6" />
         )}
 
-        <circle cx={C} cy={C} r={R_DISQUE} fill="url(#halo)" />
         <circle cx={C} cy={C} r={R_DISQUE} fill="none" stroke="var(--color-line)" strokeWidth="1" />
-        <circle cx={C} cy={C} r={R_RIM} fill="none" stroke="var(--color-line)" strokeWidth="1" opacity="0.5" />
 
-        {/* Graduations tous les 30° */}
-        {Array.from({ length: 12 }, (_, i) => {
-          const a = (i * 30 * Math.PI) / 180
-          const r1 = R_RIM - 5
-          const r2 = R_RIM
+        {/* Couronne graduée : trait long tous les 30°, fin tous les 10° */}
+        {Array.from({ length: 36 }, (_, i) => {
+          const majeur = i % 3 === 0
+          const a = (i * 10 * Math.PI) / 180
+          const r1 = R_RIM - (majeur ? 9 : 4)
           return (
             <line
               key={i}
               x1={C + r1 * Math.sin(a)}
               y1={C - r1 * Math.cos(a)}
-              x2={C + r2 * Math.sin(a)}
-              y2={C - r2 * Math.cos(a)}
+              x2={C + R_RIM * Math.sin(a)}
+              y2={C - R_RIM * Math.cos(a)}
               stroke="var(--color-dim)"
-              strokeWidth="1"
-              opacity={i % 3 === 0 ? 0.9 : 0.4}
+              strokeWidth={majeur ? 1.3 : 0.8}
+              opacity={majeur ? 0.85 : 0.35}
             />
           )
         })}
 
-        {/* Flèche du vent : elle pointe dans le sens où le vent pousse.
-            Elle reste sur l'anneau extérieur pour ne pas masquer la valeur centrale. */}
-        <g
-          className="transition-cadran"
-          style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionDeg}deg)` }}
-        >
-          <line x1={C} y1={C - 88} x2={C} y2={C - 58} stroke={couleur} strokeWidth="3.5" strokeLinecap="round" />
-          <path d={`M${C} ${C - 46} L${C - 8.5} ${C - 63} L${C + 8.5} ${C - 63} Z`} fill={couleur} />
-        </g>
-
-        {/* Houle : trait plus large et plus sombre, distinct de la flèche de vent */}
+        {/* Houle : deux crêtes bleues, à l'extérieur de la flèche de vent */}
         {directionHouleDeg !== null && (
           <g
             className="transition-cadran"
             style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionHouleDeg}deg)` }}
           >
             <path
-              d={`M${C - 13} ${C - 84} Q${C} ${C - 76} ${C + 13} ${C - 84}`}
+              d={`M${C - 14} ${C - 78} Q${C} ${C - 69} ${C + 14} ${C - 78}`}
               fill="none"
-              stroke="#5ec8e8"
-              strokeWidth="2.5"
+              stroke="#5fb6d4"
+              strokeWidth="2.6"
               strokeLinecap="round"
-              opacity="0.9"
             />
             <path
-              d={`M${C - 9} ${C - 74} Q${C} ${C - 67} ${C + 9} ${C - 74}`}
+              d={`M${C - 10} ${C - 67} Q${C} ${C - 59} ${C + 10} ${C - 67}`}
               fill="none"
-              stroke="#5ec8e8"
+              stroke="#5fb6d4"
               strokeWidth="2"
               strokeLinecap="round"
-              opacity="0.55"
+              opacity="0.5"
             />
           </g>
         )}
 
-        <circle cx={C} cy={C} r="4" fill="var(--color-foam)" opacity="0.5" />
+        {/* Aiguille du vent : elle pointe dans le sens où le vent pousse */}
+        <g
+          className="transition-cadran"
+          style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionDeg}deg)` }}
+        >
+          <line
+            x1={C}
+            y1={C - 52}
+            x2={C}
+            y2={C + 34}
+            stroke={couleur}
+            strokeWidth="2"
+            strokeLinecap="round"
+            opacity="0.35"
+          />
+          <path
+            d={`M${C} ${C + 46} L${C - 9} ${C + 26} L${C} ${C + 31} L${C + 9} ${C + 26} Z`}
+            fill={couleur}
+          />
+          <circle cx={C} cy={C - 52} r="3.5" fill={couleur} opacity="0.75" />
+        </g>
+
+        <circle cx={C} cy={C} r="3" fill="var(--color-foam)" opacity="0.55" />
       </svg>
 
       {/* Points cardinaux, fixes : ils ne tournent pas avec le spot */}
       {(['N', 'E', 'S', 'O'] as const).map((point, i) => {
         const pos = [
-          { top: '-2%', left: '50%', transform: 'translateX(-50%)' },
-          { top: '50%', right: '-2%', transform: 'translateY(-50%)' },
-          { bottom: '-2%', left: '50%', transform: 'translateX(-50%)' },
-          { top: '50%', left: '-2%', transform: 'translateY(-50%)' },
+          { top: '-4%', left: '50%', transform: 'translateX(-50%)' },
+          { top: '50%', right: '-4%', transform: 'translateY(-50%)' },
+          { bottom: '-4%', left: '50%', transform: 'translateX(-50%)' },
+          { top: '50%', left: '-4%', transform: 'translateY(-50%)' },
         ][i]
         return (
           <span
             key={point}
-            className="absolute font-mono text-[10px] tracking-widest text-dim"
+            className="absolute font-mono text-[11px] tracking-widest text-muted"
             style={pos}
           >
             {point}
           </span>
         )
       })}
-
-      {/* Lecture centrale : la valeur mesurée, en mono */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-        <span className="tabular font-mono text-[3.25rem] leading-none font-medium text-foam">
-          {Math.round(ventNoeuds)}
-        </span>
-        <span className="font-mono text-[10px] tracking-[0.2em] text-muted">NŒUDS</span>
-        <span className="tabular mt-1 font-mono text-[11px] text-dim">
-          rafales {Math.round(rafalesNoeuds)}
-        </span>
-      </div>
     </div>
   )
 }

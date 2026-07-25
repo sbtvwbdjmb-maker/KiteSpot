@@ -68,6 +68,34 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/**
+ * Halo diffus derrière le cadran. Repris de l'idée de sphère lumineuse d'un
+ * hero « Odyssey », mais en une seule couche CSS : le shader WebGL d'origine
+ * animait un éclair en continu, ce qui n'apporte rien à un instrument de
+ * lecture et tournerait en boucle sur la batterie d'un téléphone.
+ */
+.halo-cadran {
+  position: relative;
+  isolation: isolate;
+}
+
+.halo-cadran::before {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in oklab, var(--verdict) 16%, transparent) 0%,
+    color-mix(in oklab, var(--verdict) 6%, transparent) 45%,
+    transparent 72%
+  );
+  filter: blur(18px);
+  transition: background 900ms ease;
+  pointer-events: none;
+}
+
 /* --- Animations d'entrée, orchestrées une seule fois au chargement --- */
 @keyframes monte {
   from {

@@ -49,7 +49,7 @@ export default function App() {
   const [resolutionEnCours, setResolutionEnCours] = useState(false)
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
 
-  const { localiser } = useGeolocation()
+  const { localiser, permission: permissionGeoloc } = useGeolocation()
   const { meteo, marine, chargement, erreur, misAJourLe, rafraichir } = useConditions(lieu)
   const fraicheur = useFraicheur(misAJourLe)
 
@@ -107,8 +107,11 @@ export default function App() {
     }
   }, [localiser, choisirResultat, setLieu])
 
-  // Géolocalisation au chargement, non bloquante : un spot déjà choisi reste affiché
+  // On ne localise d'office que si la permission est DÉJÀ accordée. Sinon on
+  // attend le clic : une demande non sollicitée que l'utilisateur écarte
+  // condamnerait le bouton « Utiliser ma position » pour toute la session.
   useEffect(() => {
+    if (permissionGeoloc !== 'accordee') return
     let annule = false
     void localiser()
       .then(({ lat, lon }) => {
@@ -119,17 +122,16 @@ export default function App() {
           const proche = SPOTS.map((s) => ({ s, d: distanceKm(lat, lon, s.lat, s.lon) })).sort(
             (a, b) => a.d - b.d,
           )[0]
-          if (proche) return spotVersLieu(proche.s)
-          return courant
+          return proche ? spotVersLieu(proche.s) : courant
         })
       })
-      .catch((e: Error) => {
-        if (!annule) setMessageGeoloc(e.message)
+      .catch(() => {
+        // Le message d'erreur est porté par le hook, rien à ajouter ici
       })
     return () => {
       annule = true
     }
-  }, [localiser, setLieu])
+  }, [permissionGeoloc, localiser, setLieu])
 
   const conditionsAffichees = useMemo(() => {
     if (!meteo) return null
@@ -364,6 +366,7 @@ export default function App() {
         <SelecteurLieu
           distances={distances}
           positionConnue={position !== null}
+          permissionGeoloc={permissionGeoloc}
           onChoisirResultat={choisirResultat}
           onUtiliserMaPosition={utiliserMaPosition}
           onFermer={() => setModale(null)}

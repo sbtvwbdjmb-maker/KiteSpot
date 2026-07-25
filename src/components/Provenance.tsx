@@ -46,21 +46,21 @@ export function Provenance({
 
       <dl className="space-y-2 text-[13px] leading-snug">
         <Ligne
-          titre="Météo et vent"
-          detail={`Open-Meteo — vent moyen, rafales, direction, température, précipitations, nuages, soleil.${
-            eauDisponible ? ' Température de l’eau et houle via son API marine.' : ''
-          }`}
+          titre="Modélisé — Open-Meteo"
+          detail={`Vent moyen, rafales, direction, température, précipitations, nuages, soleil.${
+            eauDisponible ? ' Houle et température de l’eau via son API marine.' : ''
+          } Ce sont des sorties de modèles météo (AROME de Météo-France sur la France, ECMWF ou GFS ailleurs), pas des relevés d’une station posée sur la plage.`}
         />
         {!eauDisponible && (
           <Ligne titre="Température de l’eau" detail="Non couverte sur ce plan d’eau : rien n’est affiché." />
         )}
-        <Ligne titre="Recherche de lieux" detail="Photon — données © contributeurs OpenStreetMap." />
+        <Ligne titre="Recherche de lieux — Photon" detail="Données © contributeurs OpenStreetMap." />
         <Ligne
-          titre="Calculé par KiteSpot"
+          titre="Calculé — KiteSpot"
           detail="Direction relative au littoral, régularité, score par critère, note globale, meilleur créneau."
         />
         <Ligne
-          titre="Estimé par KiteSpot"
+          titre="Estimé — KiteSpot"
           detail="La taille de voile est indicative, à partir de ton poids, ton niveau et le vent."
         />
       </dl>
