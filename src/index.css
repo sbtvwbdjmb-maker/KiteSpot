@@ -18,6 +18,7 @@
   /* Couleurs de verdict — sémantiques, jamais décoratives */
   --color-go: #2fe3a0;
   --color-warn: #ffc247;
+  --color-orange: #ff9347;
   --color-stop: #ff6a5a;
 
   /* Terre / mer du cadran : la terre reste sourde, c'est un repère, pas un sujet */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchMeteo, type MeteoSpot } from '../services/weather'
-import { fetchMarine, type DonneesMarines } from '../services/marine'
+import { fetchMarine, MARINE_VIDE, type DonneesMarines } from '../services/marine'
 import { creerCache, clePoint } from '../lib/cache'
 import type { Lieu } from '../types/lieu'
 
@@ -15,8 +15,6 @@ const DUREE_CACHE_MS = 9 * 60 * 1000
 
 const cacheMeteo = creerCache<MeteoSpot>(DUREE_CACHE_MS)
 const cacheMarine = creerCache<DonneesMarines>(DUREE_CACHE_MS)
-
-const MARINE_VIDE: DonneesMarines = { temperatureEauC: null, hauteurVaguesM: null }
 
 interface EtatConditions {
   meteo: MeteoSpot | null
