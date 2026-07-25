@@ -4,16 +4,11 @@ import { useDebounce } from '../hooks/useDebounce'
 import { lireCoordonnees, rechercherLieu, type ResultatLieu } from '../services/geocoding'
 import { SPOTS } from '../hooks/useLieux'
 import { formaterDistance } from '../lib/geo'
-import type { EtatPermission } from '../hooks/useGeolocation'
 
 interface Props {
   distances: Record<string, number>
   positionConnue: boolean
-  permissionGeoloc: EtatPermission
-  /** message affiché seulement après une tentative de localisation ratée */
-  messageGeoloc: string | null
   onChoisirResultat: (resultat: ResultatLieu) => void
-  onUtiliserMaPosition: () => void
   onFermer: () => void
 }
 
@@ -25,10 +20,7 @@ function normaliser(texte: string): string {
 export function SelecteurLieu({
   distances,
   positionConnue,
-  permissionGeoloc,
-  messageGeoloc,
   onChoisirResultat,
-  onUtiliserMaPosition,
   onFermer,
 }: Props) {
   const [requete, setRequete] = useState('')
@@ -92,25 +84,6 @@ export function SelecteurLieu({
 
   return (
     <Modale titre="Choisir un spot" onFermer={onFermer}>
-      {/* Le bouton reste toujours proposé. Si la localisation est bloquée,
-          l'explication n'apparaît qu'après une tentative, en gris discret :
-          pas d'encadré d'avertissement là où l'utilisateur n'a rien demandé. */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => {
-            void onUtiliserMaPosition()
-          }}
-          disabled={permissionGeoloc === 'indisponible'}
-          className="w-full rounded-xl border border-line bg-surface/60 px-4 py-3 text-left text-[14px] text-foam transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span className="font-medium">📍 Utiliser ma position</span>
-        </button>
-        {messageGeoloc && (
-          <p className="mt-2 px-1 text-[12px] leading-snug text-dim">{messageGeoloc}</p>
-        )}
-      </div>
-
       <input
         type="search"
         value={requete}

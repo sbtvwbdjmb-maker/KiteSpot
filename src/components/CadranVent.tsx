@@ -9,7 +9,7 @@ interface Props {
   ventNoeuds: number
   rafalesNoeuds: number
   analyse: AnalyseDirection | null
-  /** provenance de la houle, affichée en surf quand la donnée existe */
+  /** provenance de la houle : deux crêtes bleues, affichées en surf */
   directionHouleDeg?: number | null
 }
 
@@ -142,26 +142,27 @@ export function CadranVent({
           )
         })}
 
-        {/* Houle : deux crêtes bleues, à l'extérieur de la flèche de vent */}
+        {/* Houle : deux crêtes bleues qui pointent vers sa provenance.
+            Distinctes de l'aiguille de vent par la forme et la couleur. */}
         {directionHouleDeg !== null && (
           <g
             className="transition-cadran"
             style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionHouleDeg}deg)` }}
           >
             <path
-              d={`M${C - 14} ${C - 78} Q${C} ${C - 69} ${C + 14} ${C - 78}`}
+              d={`M${C - 15} ${C - 76} Q${C} ${C - 66} ${C + 15} ${C - 76}`}
               fill="none"
               stroke="#5fb6d4"
-              strokeWidth="2.6"
+              strokeWidth="2.8"
               strokeLinecap="round"
             />
             <path
-              d={`M${C - 10} ${C - 67} Q${C} ${C - 59} ${C + 10} ${C - 67}`}
+              d={`M${C - 11} ${C - 64} Q${C} ${C - 55} ${C + 11} ${C - 64}`}
               fill="none"
               stroke="#5fb6d4"
-              strokeWidth="2"
+              strokeWidth="2.2"
               strokeLinecap="round"
-              opacity="0.5"
+              opacity="0.55"
             />
           </g>
         )}
