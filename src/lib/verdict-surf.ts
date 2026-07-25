@@ -3,7 +3,8 @@ import type { TonVerdict, Verdict } from './verdict'
 
 /**
  * Seuils du verdict surf, sur 10. Ordre décroissant : le premier palier atteint gagne.
- * Séparés de ceux du kite : on peut durcir le surf sans toucher au kite.
+ * Alignés sur les bandes de SEUILS_COULEUR comme ceux du kite, pour que le mot
+ * et la couleur concordent. Séparés du kite : on peut durcir l'un sans l'autre.
  */
 export const SEUILS_VERDICT_SURF: {
   min: number
@@ -11,10 +12,14 @@ export const SEUILS_VERDICT_SURF: {
   sousTitre: string
   ton: TonVerdict
 }[] = [
-  { min: 8.2, titre: 'Va surfer', sousTitre: 'Très bonnes conditions', ton: 'go' },
-  { min: 6.8, titre: 'Bonnes conditions', sousTitre: 'Ça vaut le déplacement', ton: 'go' },
-  { min: 5.2, titre: 'Conditions correctes', sousTitre: 'Ça peut fonctionner', ton: 'mitige' },
-  { min: 3.8, titre: 'Conditions moyennes', sousTitre: 'Pas idéal', ton: 'mitige' },
+  // bande verte : 8 et plus
+  { min: 9, titre: 'Va surfer', sousTitre: 'Conditions exceptionnelles', ton: 'go' },
+  { min: 8, titre: 'Très bonnes conditions', sousTitre: 'Ça vaut le déplacement', ton: 'go' },
+  // bande jaune : 6 à 8
+  { min: 6, titre: 'Conditions correctes', sousTitre: 'Ça peut fonctionner', ton: 'mitige' },
+  // bande orange : 4 à 6
+  { min: 4, titre: 'Conditions moyennes', sousTitre: 'Pas idéal', ton: 'mitige' },
+  // bande rouge : moins de 4
   { min: 2.5, titre: 'Pas idéal', sousTitre: 'Conditions peu favorables', ton: 'stop' },
   { min: 0, titre: 'Évite aujourd’hui', sousTitre: 'Conditions défavorables', ton: 'stop' },
 ]

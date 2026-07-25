@@ -9,6 +9,7 @@ import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
 import { distanceKm, formaterDistance } from './lib/geo'
 import { analyserPourSport, type Sport } from './lib/sport'
+import { couleurScore } from './lib/couleurs'
 import { NavSport } from '@/components/ui/nav-sport'
 import { BlocVerdict } from './components/BlocVerdict'
 import { Timeline } from './components/Timeline'
@@ -20,12 +21,6 @@ import { CreationProfil } from './components/CreationProfil'
 import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
 import { HeroAccueil } from '@/components/ui/hero-accueil'
-
-const COULEUR_TON = {
-  go: 'var(--color-go)',
-  mitige: 'var(--color-warn)',
-  stop: 'var(--color-stop)',
-} as const
 
 export default function App() {
   const { profils, profilActif, selectionner, ajouter, modifier, supprimer } = useProfils()
@@ -154,8 +149,6 @@ export default function App() {
     )
   }, [sport, marine, lieu, profilActif, conditionsAffichees, heureSelectionnee])
 
-  const verdict = analyse?.verdict ?? null
-
   // Spots proposés sur l'écran d'accueil : les plus proches si on connaît la
   // position, sinon les plus discrets — c'est là qu'on fait découvrir la base.
   const spotsDecouverte = useMemo(() => {
@@ -177,13 +170,16 @@ export default function App() {
     }
   }, [meteo, dateSelectionnee])
 
-  // La page prend la couleur de la réponse
+  // La page prend la couleur de la réponse. Elle est calculée à partir du
+  // score par la même fonction que les carrés de la timeline : à note égale,
+  // la couleur du verdict et celle de l'heure sont forcément identiques.
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--verdict',
-      verdict ? COULEUR_TON[verdict.ton] : 'var(--color-go)',
-    )
-  }, [verdict])
+    const couleur =
+      analyse && analyse.scoreGlobal !== null
+        ? couleurScore(analyse.scoreGlobal)
+        : 'var(--color-muted)'
+    document.documentElement.style.setProperty('--verdict', couleur)
+  }, [analyse])
 
   const appliquerOrientation = useCallback(
     (orientation: number) => {

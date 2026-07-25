@@ -118,7 +118,11 @@ export function Timeline({
         </h3>
         {creneau ? (
           <p className="text-[13px]">
-            <span className="font-mono text-[11px] tracking-wide" style={{ color: 'var(--color-go)' }}>
+            {/* Même palette que les carrés : le créneau porte sa propre qualité */}
+            <span
+              className="font-mono text-[11px] tracking-wide"
+              style={{ color: couleurScore(creneau.score) }}
+            >
               MEILLEUR CRÉNEAU
             </span>{' '}
             <span className="tabular font-mono text-foam">

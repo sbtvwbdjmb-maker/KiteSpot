@@ -11,13 +11,21 @@ export interface Verdict {
 
 /**
  * Seuils du verdict, sur 10. Ordre décroissant : le premier palier atteint gagne.
+ *
+ * Ils sont alignés sur les bandes de couleur de SEUILS_COULEUR (8 / 6 / 4) :
+ * chaque libellé tient entièrement dans une bande, si bien que le mot et la
+ * couleur ne peuvent jamais se contredire entre le verdict et la timeline.
  * C'est le seul endroit à modifier pour rendre KiteSpot plus ou moins sévère.
  */
 export const SEUILS_VERDICT: { min: number; titre: string; sousTitre: string; ton: TonVerdict }[] = [
-  { min: 8.2, titre: 'Va kiter', sousTitre: 'Très bonnes conditions', ton: 'go' },
-  { min: 6.8, titre: 'Bonnes conditions', sousTitre: 'Ça vaut le déplacement', ton: 'go' },
-  { min: 5.2, titre: 'Conditions correctes', sousTitre: 'Ça peut fonctionner', ton: 'mitige' },
-  { min: 3.8, titre: 'Conditions moyennes', sousTitre: 'Pas idéal', ton: 'mitige' },
+  // bande verte : 8 et plus
+  { min: 9, titre: 'Va kiter', sousTitre: 'Conditions exceptionnelles', ton: 'go' },
+  { min: 8, titre: 'Très bonnes conditions', sousTitre: 'Ça vaut le déplacement', ton: 'go' },
+  // bande jaune : 6 à 8
+  { min: 6, titre: 'Conditions correctes', sousTitre: 'Ça peut fonctionner', ton: 'mitige' },
+  // bande orange : 4 à 6
+  { min: 4, titre: 'Conditions moyennes', sousTitre: 'Pas idéal', ton: 'mitige' },
+  // bande rouge : moins de 4
   { min: 2.5, titre: 'Pas idéal', sousTitre: 'Conditions peu favorables', ton: 'stop' },
   { min: 0, titre: 'Évite aujourd’hui', sousTitre: 'Conditions défavorables', ton: 'stop' },
 ]
