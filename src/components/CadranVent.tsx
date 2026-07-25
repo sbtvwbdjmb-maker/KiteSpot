@@ -4,11 +4,11 @@ import { degresVersCardinal } from '../lib/direction'
 interface Props {
   /** provenance du vent en degrés (convention météo) */
   directionDeg: number
-  /** orientation du littoral : cap vers lequel on regarde face à la mer */
-  orientationSpot: number
+  /** orientation du littoral, ou null quand elle est inconnue ici */
+  orientationLittoral: number | null
   ventNoeuds: number
   rafalesNoeuds: number
-  analyse: AnalyseDirection
+  analyse: AnalyseDirection | null
 }
 
 const C = 110 // centre
@@ -21,11 +21,26 @@ const R_RIM = 96
  * immédiatement si le vent pousse vers la plage ou vers le large — c'est
  * l'interprétation qu'on doit normalement faire de tête devant une rose des vents.
  */
-export function CadranVent({ directionDeg, orientationSpot, ventNoeuds, rafalesNoeuds, analyse }: Props) {
-  const couleur =
-    analyse.score >= 0.8 ? 'var(--color-go)' : analyse.score >= 0.45 ? 'var(--color-warn)' : 'var(--color-stop)'
+export function CadranVent({
+  directionDeg,
+  orientationLittoral,
+  ventNoeuds,
+  rafalesNoeuds,
+  analyse,
+}: Props) {
+  // Sans analyse de direction, la flèche reste neutre : aucune couleur ne doit
+  // laisser croire qu'on a jugé une orientation qu'on ne connaît pas.
+  const couleur = !analyse
+    ? 'var(--color-muted)'
+    : analyse.score >= 0.8
+      ? 'var(--color-go)'
+      : analyse.score >= 0.45
+        ? 'var(--color-warn)'
+        : 'var(--color-stop)'
 
-  const description = `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds, ${analyse.label} sur ce spot`
+  const description = analyse
+    ? `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds, ${analyse.label} sur ce spot`
+    : `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds. Orientation du littoral inconnue ici.`
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[15rem] sm:max-w-[19rem]">
@@ -44,13 +59,23 @@ export function CadranVent({ directionDeg, orientationSpot, ventNoeuds, rafalesN
           </radialGradient>
         </defs>
 
-        {/* Terre et mer, pivotés selon l'orientation réelle du littoral */}
-        <g clipPath="url(#disque)" className="transition-cadran" style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${orientationSpot}deg)` }}>
-          <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-sea)" />
-          <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#houle)" />
-          <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-land)" />
-          <line x1={C - R_DISQUE} y1={C} x2={C + R_DISQUE} y2={C} stroke="#3d8f7a" strokeWidth="1.25" opacity="0.6" />
-        </g>
+        {/* Terre et mer, pivotés selon l'orientation réelle du littoral.
+            Quand elle est inconnue, on ne dessine pas de côte : le cadran
+            redevient une simple rose des vents. */}
+        {orientationLittoral !== null ? (
+          <g
+            clipPath="url(#disque)"
+            className="transition-cadran"
+            style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${orientationLittoral}deg)` }}
+          >
+            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-sea)" />
+            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#houle)" />
+            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={R_DISQUE} fill="var(--color-land)" />
+            <line x1={C - R_DISQUE} y1={C} x2={C + R_DISQUE} y2={C} stroke="#3d8f7a" strokeWidth="1.25" opacity="0.6" />
+          </g>
+        ) : (
+          <circle cx={C} cy={C} r={R_DISQUE} fill="var(--color-sea)" opacity="0.5" />
+        )}
 
         <circle cx={C} cy={C} r={R_DISQUE} fill="url(#halo)" />
         <circle cx={C} cy={C} r={R_DISQUE} fill="none" stroke="var(--color-line)" strokeWidth="1" />

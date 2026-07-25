@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import spotsData from './data/spots.json'
-import type { Spot } from './types/spot'
+import type { Lieu } from './types/lieu'
+import type { ResultatLieu } from './services/geocoding'
+import { nommerPosition } from './services/geocoding'
+import { SPOTS, spotVersLieu, idGeo, useResolutionLieu } from './hooks/useLieux'
 import { useProfils } from './hooks/useProfils'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import { useConditions } from './hooks/useConditions'
-import { useApercuSpots } from './hooks/useApercuSpots'
+import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
 import { distanceKm, formaterDistance } from './lib/geo'
 import { analyserConditions, meilleurCreneau } from './lib/scoring'
@@ -12,12 +13,12 @@ import { construireVerdict } from './lib/verdict'
 import { BlocVerdict } from './components/BlocVerdict'
 import { Timeline } from './components/Timeline'
 import { Criteres } from './components/Criteres'
-import { RailSpots } from './components/RailSpots'
-import { SelecteurSpot } from './components/SelecteurSpot'
+import { SelecteurLieu } from './components/SelecteurLieu'
 import { PanneauProfil } from './components/PanneauProfil'
+import { MenuProfil } from './components/MenuProfil'
+import { CreationProfil } from './components/CreationProfil'
+import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
-
-const SPOTS = spotsData as Spot[]
 
 const COULEUR_TON = {
   go: 'var(--color-go)',
@@ -26,22 +27,34 @@ const COULEUR_TON = {
 } as const
 
 export default function App() {
-  const { profils, profilActif, selectionner, modifier, ajouter, supprimer } = useProfils()
-  const [favoris, setFavoris] = useLocalStorage<string[]>('kitespot.favoris.v1', [])
-  const [dernierSpotId, setDernierSpotId] = useLocalStorage<string | null>('kitespot.spot.v1', null)
+  const { profils, profilActif, selectionner, ajouter, modifier, supprimer } = useProfils()
+  const { resoudre, corrigerOrientation } = useResolutionLieu()
+  // On mémorise le lieu entier, pas seulement un identifiant de spot :
+  // un lieu cherché librement doit être retrouvé au retour sur le site.
+  const [dernierLieu, setDernierLieu] = useLocalStorage<Lieu | null>('kitespot.lieu.v1', null)
+  const [lieu, setLieuInterne] = useState<Lieu | null>(dernierLieu)
 
-  const [spotActif, setSpotActif] = useState<Spot | null>(
-    () => SPOTS.find((s) => s.id === dernierSpotId) ?? null,
+  const setLieu = useCallback(
+    (suivant: Lieu | null | ((courant: Lieu | null) => Lieu | null)) => {
+      setLieuInterne((courant) => {
+        const resolu = typeof suivant === 'function' ? suivant(courant) : suivant
+        setDernierLieu(resolu)
+        return resolu
+      })
+    },
+    [setDernierLieu],
   )
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null)
-  const [modale, setModale] = useState<'spot' | 'profil' | null>(null)
+  const [modale, setModale] = useState<'lieu' | 'profil' | 'nouveau-profil' | null>(null)
+  const [menuProfilOuvert, setMenuProfilOuvert] = useState(false)
   const [heureSelectionnee, setHeureSelectionnee] = useState<string | null>(null)
+  const [resolutionEnCours, setResolutionEnCours] = useState(false)
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
 
   const { localiser } = useGeolocation()
-  const { meteo, marine, chargement, erreur, misAJourLe, rafraichir } = useConditions(spotActif)
+  const { meteo, marine, chargement, erreur, misAJourLe, rafraichir } = useConditions(lieu)
+  const fraicheur = useFraicheur(misAJourLe)
 
-  // Distances à vol d'oiseau depuis la position détectée
   const distances = useMemo(() => {
     if (!position) return {}
     const table: Record<string, number> = {}
@@ -49,40 +62,67 @@ export default function App() {
     return table
   }, [position])
 
-  const spotLePlusProche = useCallback((lat: number, lon: number) => {
-    return SPOTS.reduce((proche, spot) =>
-      distanceKm(lat, lon, spot.lat, spot.lon) < distanceKm(lat, lon, proche.lat, proche.lon)
-        ? spot
-        : proche,
-    )
-  }, [])
+  const choisirResultat = useCallback(
+    async (resultat: ResultatLieu) => {
+      setResolutionEnCours(true)
+      setHeureSelectionnee(null)
+      try {
+        const nouveau = await resoudre(resultat)
+        setLieu(nouveau)
+      } finally {
+        setResolutionEnCours(false)
+      }
+    },
+    [resoudre, setLieu],
+  )
 
   const utiliserMaPosition = useCallback(async () => {
     setMessageGeoloc(null)
     try {
       const { lat, lon } = await localiser()
       setPosition({ lat, lon })
-      const proche = spotLePlusProche(lat, lon)
-      setSpotActif(proche)
-      setDernierSpotId(proche.id)
+
+      // Un spot vérifié à moins de 15 km prime : ses données valent mieux qu'une estimation
+      const proche = SPOTS.map((s) => ({ s, d: distanceKm(lat, lon, s.lat, s.lon) })).sort(
+        (a, b) => a.d - b.d,
+      )[0]
+      if (proche && proche.d <= 15) {
+        setLieu(spotVersLieu(proche.s))
+        return
+      }
+
+      // Sinon on nomme la position par géocodage inverse
+      const nomme = await nommerPosition(lat, lon)
+      await choisirResultat(
+        nomme ?? {
+          cle: idGeo(lat, lon),
+          nom: 'Ma position',
+          localite: `${lat.toFixed(3)}, ${lon.toFixed(3)}`,
+          pays: '',
+          lat,
+          lon,
+          categorie: 'coords',
+        },
+      )
     } catch (e) {
       setMessageGeoloc(e instanceof Error ? e.message : 'Position indisponible')
     }
-  }, [localiser, spotLePlusProche, setDernierSpotId])
+  }, [localiser, choisirResultat, setLieu])
 
-  // Au chargement : on tente la géolocalisation sans la rendre bloquante.
-  // Si un spot était déjà sélectionné, il reste affiché pendant la détection.
+  // Géolocalisation au chargement, non bloquante : un spot déjà choisi reste affiché
   useEffect(() => {
     let annule = false
     void localiser()
       .then(({ lat, lon }) => {
         if (annule) return
         setPosition({ lat, lon })
-        setSpotActif((courant) => {
+        setLieu((courant) => {
           if (courant) return courant
-          const proche = spotLePlusProche(lat, lon)
-          setDernierSpotId(proche.id)
-          return proche
+          const proche = SPOTS.map((s) => ({ s, d: distanceKm(lat, lon, s.lat, s.lon) })).sort(
+            (a, b) => a.d - b.d,
+          )[0]
+          if (proche) return spotVersLieu(proche.s)
+          return courant
         })
       })
       .catch((e: Error) => {
@@ -91,24 +131,8 @@ export default function App() {
     return () => {
       annule = true
     }
-  }, [localiser, spotLePlusProche, setDernierSpotId])
+  }, [localiser, setLieu])
 
-  const choisirSpot = useCallback(
-    (spot: Spot) => {
-      setSpotActif(spot)
-      setDernierSpotId(spot.id)
-      setHeureSelectionnee(null)
-    },
-    [setDernierSpotId],
-  )
-
-  const basculerFavori = useCallback(
-    (spotId: string) =>
-      setFavoris((liste) => (liste.includes(spotId) ? liste.filter((id) => id !== spotId) : [...liste, spotId])),
-    [setFavoris],
-  )
-
-  // Conditions analysées : soit maintenant, soit l'heure projetée depuis la timeline
   const conditionsAffichees = useMemo(() => {
     if (!meteo) return null
     if (!heureSelectionnee) return meteo.actuel
@@ -116,77 +140,91 @@ export default function App() {
   }, [meteo, heureSelectionnee])
 
   const analyse = useMemo(() => {
-    if (!meteo || !spotActif || !conditionsAffichees) return null
-    return analyserConditions({ ...meteo, actuel: conditionsAffichees }, marine, spotActif, profilActif)
-  }, [meteo, marine, spotActif, profilActif, conditionsAffichees])
+    if (!lieu || !profilActif || !conditionsAffichees) return null
+    return analyserConditions(conditionsAffichees, marine, lieu, profilActif)
+  }, [marine, lieu, profilActif, conditionsAffichees])
 
-  const verdict = useMemo(() => {
-    if (!analyse || !spotActif || !conditionsAffichees) return null
-    return construireVerdict(analyse, profilActif, spotActif, conditionsAffichees)
-  }, [analyse, profilActif, spotActif, conditionsAffichees])
+  const verdict = useMemo(() => (analyse ? construireVerdict(analyse) : null), [analyse])
 
   const creneau = useMemo(() => {
-    if (!meteo || !spotActif) return null
-    return meilleurCreneau(meteo.previsions, spotActif, profilActif, new Date(), meteo.coucherSoleil)
-  }, [meteo, spotActif, profilActif])
-
-  // Les vignettes : favoris d'abord, sinon les spots proches, sinon une
-  // sélection du même pays en remontant les plus discrets — jamais de rail vide.
-  const { spotsRail, titreRail } = useMemo(() => {
-    const favorisSpots = favoris
-      .map((id) => SPOTS.find((s) => s.id === id))
-      .filter((s): s is Spot => Boolean(s))
-    if (favorisSpots.length > 0) return { spotsRail: favorisSpots.slice(0, 8), titreRail: 'MES SPOTS' }
-
-    if (position) {
-      return {
-        spotsRail: [...SPOTS].sort((a, b) => distances[a.id] - distances[b.id]).slice(0, 6),
-        titreRail: 'AUTOUR DE TOI',
-      }
-    }
-
-    if (spotActif) {
-      const memePays = SPOTS.filter((s) => s.country === spotActif.country && s.id !== spotActif.id)
-        .sort((a, b) => a.popularite - b.popularite)
-        .slice(0, 6)
-      return { spotsRail: memePays, titreRail: `À DÉCOUVRIR · ${spotActif.country.toUpperCase()}` }
-    }
-
-    return { spotsRail: [] as Spot[], titreRail: '' }
-  }, [favoris, position, distances, spotActif])
-
-  const apercus = useApercuSpots(spotsRail, profilActif)
+    if (!meteo || !lieu || !profilActif) return null
+    return meilleurCreneau(meteo.previsions, lieu, profilActif, new Date(), meteo.coucherSoleil)
+  }, [meteo, lieu, profilActif])
 
   // La page prend la couleur de la réponse
   useEffect(() => {
-    const couleur = verdict ? COULEUR_TON[verdict.ton] : 'var(--color-go)'
-    document.documentElement.style.setProperty('--verdict', couleur)
+    document.documentElement.style.setProperty(
+      '--verdict',
+      verdict ? COULEUR_TON[verdict.ton] : 'var(--color-go)',
+    )
   }, [verdict])
 
-  const distanceSpot = spotActif && position ? distances[spotActif.id] : undefined
+  const appliquerOrientation = useCallback(
+    (orientation: number) => {
+      if (!lieu) return
+      corrigerOrientation(lieu.id, orientation)
+      setLieu({ ...lieu, orientation, sourceOrientation: 'manuelle' })
+    },
+    [lieu, corrigerOrientation, setLieu],
+  )
+
+  // Tant qu'aucun profil n'existe, on ne peut rien personnaliser : on le crée d'abord
+  if (!profilActif) {
+    return (
+      <div className="relative min-h-screen">
+        <div className="ambiance" aria-hidden />
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
+          <h1 className="mb-1 font-display text-2xl font-bold text-foam">
+            Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
+          </h1>
+          <p className="mb-7 text-[14px] text-muted">
+            Sais en cinq secondes si tu dois aller kiter.
+          </p>
+          <CreationProfil premier onCreer={ajouter} />
+        </div>
+      </div>
+    )
+  }
+
+  const distanceLieu = lieu && position ? distances[lieu.id] : undefined
 
   return (
     <div className="relative min-h-screen">
       <div className="ambiance" aria-hidden />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
-        {/* Barre : identité, profil, spot */}
         <header className="flex items-center justify-between gap-3 py-4">
           <span className="font-display text-[15px] font-bold tracking-tight text-foam">
             Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
           </span>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuProfilOuvert((o) => !o)}
+                aria-expanded={menuProfilOuvert}
+                className="flex items-center gap-1.5 rounded-full border border-line bg-surface/50 px-3 py-1.5 text-[12px] text-muted transition-colors hover:text-foam"
+              >
+                <span aria-hidden>👤</span>
+                {profilActif.nom}
+                <span aria-hidden className="text-[9px] opacity-70">▼</span>
+              </button>
+              {menuProfilOuvert && (
+                <MenuProfil
+                  profils={profils}
+                  profilActif={profilActif}
+                  onSelectionner={selectionner}
+                  onAjouter={() => setModale('nouveau-profil')}
+                  onModifier={() => setModale('profil')}
+                  onFermer={() => setMenuProfilOuvert(false)}
+                />
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => setModale('profil')}
-              className="rounded-full border border-line bg-surface/50 px-3 py-1.5 text-[12px] text-muted transition-colors hover:text-foam"
-            >
-              {profilActif.nom} · {profilActif.poids} kg
-            </button>
-            <button
-              type="button"
-              onClick={() => setModale('spot')}
+              onClick={() => setModale('lieu')}
               className="rounded-full border border-line bg-surface/50 px-3 py-1.5 text-[12px] text-muted transition-colors hover:text-foam"
             >
               Changer de spot
@@ -194,23 +232,20 @@ export default function App() {
           </div>
         </header>
 
-        {spotActif ? (
+        {lieu ? (
           <main className="flex flex-1 flex-col gap-8 pt-2">
-            {/* Localisation détectée */}
             <div className="monte">
-              <p className="font-mono text-[11px] tracking-[0.2em] text-muted">
-                {position ? 'SPOT LE PLUS PROCHE' : 'SPOT SÉLECTIONNÉ'}
-              </p>
+              <p className="font-mono text-[11px] tracking-[0.2em] text-muted">SPOT SÉLECTIONNÉ</p>
               <h1 className="mt-1.5 font-display text-[clamp(1.5rem,4.5vw,2.1rem)] leading-tight font-bold text-foam">
-                {spotActif.name}
+                {lieu.nom}
               </h1>
               <p className="mt-1 text-[13px] text-muted">
-                {spotActif.locality} · {spotActif.country}
-                {distanceSpot !== undefined && ` · à ${formaterDistance(distanceSpot)}`}
+                {[lieu.localite, lieu.pays].filter(Boolean).join(' · ')}
+                {distanceLieu !== undefined && ` · à ${formaterDistance(distanceLieu)}`}
               </p>
             </div>
 
-            {chargement && !meteo && (
+            {(chargement || resolutionEnCours) && !meteo && (
               <p className="pulse-douce py-16 text-center font-mono text-[13px] text-muted">
                 Lecture des conditions…
               </p>
@@ -232,17 +267,16 @@ export default function App() {
             {analyse && verdict && conditionsAffichees && meteo && (
               <>
                 <BlocVerdict
-                  spot={spotActif}
+                  lieu={lieu}
                   analyse={analyse}
                   verdict={verdict}
                   conditions={conditionsAffichees}
-                  marine={marine}
                   heureProjetee={heureSelectionnee}
                 />
 
                 <Timeline
                   previsions={meteo.previsions}
-                  spot={spotActif}
+                  lieu={lieu}
                   profil={profilActif}
                   creneau={creneau}
                   heureSelectionnee={heureSelectionnee}
@@ -252,45 +286,37 @@ export default function App() {
 
                 <Criteres criteres={analyse.criteres} />
 
-                <RailSpots
-                  titre={titreRail}
-                  spots={spotsRail}
-                  spotActifId={spotActif.id}
-                  apercus={apercus}
-                  distances={distances}
-                  favoris={favoris}
-                  onSelectionner={choisirSpot}
-                  onBasculerFavori={basculerFavori}
-                />
-
-                {/* Fiche du spot */}
-                <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
-                  <h3 className="mb-3 font-mono text-[11px] tracking-[0.22em] text-muted">LE SPOT</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Info label="Type d’eau" valeur={spotActif.type.join(', ')} />
-                    <Info label="Niveau requis" valeur={spotActif.niveau} />
-                    <Info label="Accès" valeur={spotActif.acces} />
-                    <Info label="À savoir" valeur={spotActif.notes} />
-                  </div>
-                </section>
+                {lieu.acces && (
+                  <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
+                    <h3 className="mb-3 font-mono text-[11px] tracking-[0.22em] text-muted">LE SPOT</h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {lieu.type && <Info label="Type d’eau" valeur={lieu.type.join(', ')} />}
+                      {lieu.niveau && <Info label="Niveau requis" valeur={lieu.niveau} />}
+                      <Info label="Accès" valeur={lieu.acces} />
+                      {lieu.notes && <Info label="À savoir" valeur={lieu.notes} />}
+                    </div>
+                  </section>
+                )}
 
                 <Provenance
-                  misAJourLe={misAJourLe}
+                  lieu={lieu}
+                  fraicheur={fraicheur}
                   eauDisponible={marine.temperatureEauC !== null}
+                  chargement={chargement}
                   onRafraichir={rafraichir}
+                  onCorrigerOrientation={appliquerOrientation}
                 />
               </>
             )}
           </main>
         ) : (
-          /* Aucun spot : on invite à agir plutôt que d'afficher une page vide */
           <main className="flex flex-1 flex-col items-center justify-center gap-5 py-20 text-center">
+            {/* Espace fine insécable avant le « ? » : il ne doit jamais partir seul à la ligne */}
             <h1 className="max-w-md font-display text-[clamp(1.6rem,5vw,2.4rem)] leading-tight font-bold text-foam">
-              Sais en cinq secondes si tu dois aller kiter.
+              {`Où veux-tu kiter, ${profilActif.nom} ?`}
             </h1>
             <p className="max-w-sm text-[14px] leading-relaxed text-muted">
-              KiteSpot lit le vent, le compare à ton poids, ton niveau et ton matériel, puis te dit quoi
-              faire. {messageGeoloc ?? 'Autorise la localisation pour détecter ton spot.'}
+              {messageGeoloc ?? 'Autorise la localisation ou cherche un spot.'}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               <button
@@ -299,29 +325,25 @@ export default function App() {
                 className="rounded-xl px-5 py-3 text-[14px] font-medium text-abyss"
                 style={{ background: 'var(--verdict)' }}
               >
-                Utiliser ma position
+                📍 Utiliser ma position
               </button>
               <button
                 type="button"
-                onClick={() => setModale('spot')}
+                onClick={() => setModale('lieu')}
                 className="rounded-xl border border-line px-5 py-3 text-[14px] text-foam transition-colors hover:bg-surface"
               >
-                Choisir un spot
+                Chercher un spot
               </button>
             </div>
           </main>
         )}
       </div>
 
-      {modale === 'spot' && (
-        <SelecteurSpot
-          spots={SPOTS}
-          spotActifId={spotActif?.id ?? ''}
-          favoris={favoris}
+      {modale === 'lieu' && (
+        <SelecteurLieu
           distances={distances}
           positionConnue={position !== null}
-          onSelectionner={choisirSpot}
-          onBasculerFavori={basculerFavori}
+          onChoisirResultat={choisirResultat}
           onUtiliserMaPosition={utiliserMaPosition}
           onFermer={() => setModale(null)}
         />
@@ -329,14 +351,25 @@ export default function App() {
 
       {modale === 'profil' && (
         <PanneauProfil
-          profils={profils}
-          profilActif={profilActif}
-          onSelectionner={selectionner}
+          profil={profilActif}
+          peutSupprimer={profils.length > 1}
           onModifier={modifier}
-          onAjouter={ajouter}
           onSupprimer={supprimer}
           onFermer={() => setModale(null)}
         />
+      )}
+
+      {modale === 'nouveau-profil' && (
+        <Modale titre="Nouveau profil" onFermer={() => setModale(null)}>
+          <CreationProfil
+            premier={false}
+            onCreer={(champs) => {
+              ajouter(champs)
+              setModale(null)
+            }}
+            onAnnuler={() => setModale(null)}
+          />
+        </Modale>
       )}
     </div>
   )

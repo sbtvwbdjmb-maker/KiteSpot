@@ -1,11 +1,11 @@
 import type { Profil } from '../types/profile'
 
-export type Adequation = 'ideale' | 'acceptable' | 'limite' | 'aucune'
+export type Adequation = 'ideale' | 'acceptable' | 'limite' | 'aucune' | 'inconnue'
 
 export interface RecoVoile {
   /** Taille théorique calculée, en m² (non arrondie aux tailles du commerce) */
   tailleIdeale: number | null
-  /** Taille effectivement retenue dans le quiver du rider */
+  /** Taille retenue dans le quiver du rider, null s'il ne l'a pas renseigné */
   tailleRetenue: number | null
   adequation: Adequation
   message: string
@@ -58,7 +58,7 @@ function coefficientProfil(profil: Profil): number {
   const parPratique = { freeride: 1, freestyle: 0.95, wave: 0.9 }
   const parPreference = { tranquille: 0.92, normal: 1, puissant: 1.08 }
   // Un débutant est plus à l'aise légèrement sous-toilé : moins de traction à gérer
-  const parNiveau = { débutant: 0.95, intermédiaire: 1, confirmé: 1 }
+  const parNiveau = { débutant: 0.95, intermédiaire: 1, confirmé: 1, expert: 1.02 }
   return parPratique[profil.pratique] * parPreference[profil.preference] * parNiveau[profil.niveau]
 }
 
@@ -83,12 +83,14 @@ export function recommanderVoile(ventNoeuds: number, profil: Profil): RecoVoile 
   const ideale = tailleReference(ventNoeuds) * (profil.poids / 75) * coefficientProfil(profil)
 
   const quiver = [...profil.quiver].sort((a, b) => a - b)
+  // Sans quiver renseigné, on donne la taille théorique sans prétendre
+  // savoir quelles voiles le rider possède réellement.
   if (quiver.length === 0) {
     return {
       tailleIdeale: ideale,
       tailleRetenue: null,
-      adequation: 'aucune',
-      message: `Renseigne ton matériel pour avoir une reco. Il te faudrait environ ${ideale.toFixed(1)} m².`,
+      adequation: 'inconnue',
+      message: `Environ ${ideale.toFixed(0)} m² pour ${profil.poids} kg. Renseigne ton matériel pour une reco parmi tes voiles.`,
     }
   }
 
@@ -116,6 +118,7 @@ export function recommanderVoile(ventNoeuds: number, profil: Profil): RecoVoile 
     aucune: sousToile
       ? 'Le vent est trop faible pour ton quiver actuel.'
       : 'Le vent est trop fort pour ton quiver actuel.',
+    inconnue: '',
   }
 
   return {

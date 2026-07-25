@@ -1,147 +1,50 @@
-import type { Profil } from '../types/profile'
-import type { Spot } from '../types/spot'
-import type { AnalyseConditions, Critere } from './scoring'
-import type { ConditionsHoraires } from '../services/weather'
+import type { AnalyseConditions } from './scoring'
 
-export type NiveauVerdict = 'excellent' | 'bon' | 'correct' | 'moyen' | 'mauvais'
 export type TonVerdict = 'go' | 'mitige' | 'stop'
 
 export interface Verdict {
-  niveau: NiveauVerdict
-  ton: TonVerdict
   titre: string
-  /** Le conseil rédigé, adressé au rider */
-  phrase: string
+  /** une ligne, jamais plus : le sous-titre doit se lire d'un coup d'œil */
+  sousTitre: string
+  ton: TonVerdict
 }
 
-const SEUILS: { min: number; niveau: NiveauVerdict; ton: TonVerdict; titre: string }[] = [
-  { min: 8.2, niveau: 'excellent', ton: 'go', titre: 'Va kiter' },
-  { min: 6.8, niveau: 'bon', ton: 'go', titre: 'Bonnes conditions' },
-  { min: 5.2, niveau: 'correct', ton: 'mitige', titre: 'Conditions correctes' },
-  { min: 3.8, niveau: 'moyen', ton: 'mitige', titre: 'Conditions moyennes' },
-  { min: 0, niveau: 'mauvais', ton: 'stop', titre: 'Pas aujourd’hui' },
+/**
+ * Seuils du verdict, sur 10. Ordre décroissant : le premier palier atteint gagne.
+ * C'est le seul endroit à modifier pour rendre KiteSpot plus ou moins sévère.
+ */
+export const SEUILS_VERDICT: { min: number; titre: string; sousTitre: string; ton: TonVerdict }[] = [
+  { min: 8.2, titre: 'Va kiter', sousTitre: 'Très bonnes conditions', ton: 'go' },
+  { min: 6.8, titre: 'Bonnes conditions', sousTitre: 'Ça vaut le déplacement', ton: 'go' },
+  { min: 5.2, titre: 'Conditions correctes', sousTitre: 'Ça peut fonctionner', ton: 'mitige' },
+  { min: 3.8, titre: 'Conditions moyennes', sousTitre: 'Pas idéal', ton: 'mitige' },
+  { min: 2.5, titre: 'Pas idéal', sousTitre: 'Conditions peu favorables', ton: 'stop' },
+  { min: 0, titre: 'Évite aujourd’hui', sousTitre: 'Conditions défavorables', ton: 'stop' },
 ]
 
 /**
- * Rédige la recommandation en langage naturel.
- * Le principe : ouvrir sur la décision, la justifier par le facteur qui domine
- * réellement l'analyse, puis donner la consigne matériel.
+ * Traduit la note en verdict. Les situations bloquantes court-circuitent les
+ * seuils : ce sont des consignes de sécurité, pas des nuances de qualité.
  */
-export function construireVerdict(
-  analyse: AnalyseConditions,
-  profil: Profil,
-  spot: Spot,
-  actuel: ConditionsHoraires,
-): Verdict {
-  const palier = SEUILS.find((s) => analyse.scoreGlobal >= s.min) ?? SEUILS[SEUILS.length - 1]
-  const vent = Math.round(actuel.ventNoeuds)
-  const voile = analyse.voile
-
-  // Les situations bloquantes court-circuitent la nuance : ce sont des avertissements
-  if (analyse.limitation === 'vent-de-terre') {
-    return {
-      niveau: 'mauvais',
-      ton: 'stop',
-      titre: analyse.direction.orientation === 'offshore' ? 'Ne navigue pas' : 'Prudence',
-      phrase:
-        analyse.direction.orientation === 'offshore'
-          ? `Le vent souffle de la terre vers le large à ${spot.name}. Même avec ${vent} nœuds, tu dériverais au large sans pouvoir remonter. C'est le seul cas où on te dit clairement non.`
-          : `À ${spot.name}, le vent sort vers le large. Techniquement navigable, mais uniquement accompagné et en restant près du bord.`,
-    }
+export function construireVerdict(analyse: AnalyseConditions): Verdict {
+  switch (analyse.limitation) {
+    case 'vent-de-terre':
+      return analyse.direction?.orientation === 'offshore'
+        ? { titre: 'Ne navigue pas', sousTitre: 'Vent de terre vers le large', ton: 'stop' }
+        : { titre: 'Prudence', sousTitre: 'Vent sortant, reste près du bord', ton: 'stop' }
+    case 'tempete':
+      return { titre: 'Reste à terre', sousTitre: 'Vent de tempête', ton: 'stop' }
+    case 'vent-fort-pour-niveau':
+      return {
+        titre: 'Trop fort pour toi',
+        sousTitre: `Au-dessus de ta plage (~${analyse.plageVent.maxi} nds)`,
+        ton: 'stop',
+      }
+    case 'vent-faible':
+      return { titre: 'Pas assez de vent', sousTitre: `Il en faut ${analyse.plageVent.mini}+ nds`, ton: 'stop' }
   }
 
-  if (analyse.limitation === 'tempete') {
-    return {
-      niveau: 'mauvais',
-      ton: 'stop',
-      titre: 'Reste à terre',
-      phrase: `${vent} nœuds, c'est de la tempête. Le matériel comme le corps prennent des risques disproportionnés. Ça ne se navigue pas.`,
-    }
-  }
-
-  if (analyse.limitation === 'vent-fort-pour-niveau') {
-    return {
-      niveau: 'mauvais',
-      ton: 'stop',
-      titre: 'Trop fort pour toi',
-      phrase: `${vent} nœuds ${describeDirection(analyse)}, c'est au-dessus de ta plage de ${profil.niveau} (jusqu'à ~${analyse.plageVent.maxi} nds). Les riders confirmés vont s'y régaler, mais pour toi ce serait subir la session plus que la piloter.`,
-    }
-  }
-
-  const phrases: string[] = []
-  const critereFaible = trouverMaillonFaible(analyse.criteres)
-
-  switch (palier.niveau) {
-    case 'excellent':
-      phrases.push(
-        `Journée à ne pas rater. ${vent} nœuds ${describeDirection(analyse)}, c'est exactement ce qu'on attend de ${spot.name}.`,
-      )
-      break
-    case 'bon':
-      phrases.push(
-        `Ça vaut le déplacement. ${vent} nœuds ${describeDirection(analyse)}, tu devrais passer une bonne session.`,
-      )
-      break
-    case 'correct':
-      phrases.push(
-        `Ça peut marcher, sans plus. ${vent} nœuds ${describeDirection(analyse)}, mais ce ne sont pas les meilleures conditions du mois.`,
-      )
-      break
-    case 'moyen':
-      phrases.push(
-        `Franchement, c'est limite. ${vent} nœuds ${describeDirection(analyse)} : tu risques de te battre plus que de t'amuser.`,
-      )
-      break
-    case 'mauvais':
-      phrases.push(
-        vent < 10
-          ? `Il n'y a pas de vent. ${vent} nœuds, ça ne suffit pas pour tenir en l'air.`
-          : `Ce n'est pas le bon jour. ${vent} nœuds ${describeDirection(analyse)}, mais les conditions ne suivent pas.`,
-      )
-      break
-  }
-
-  // Le maillon faible n'est mentionné que s'il pèse vraiment sur la note
-  if (critereFaible && critereFaible.score < 0.55 && palier.niveau !== 'mauvais') {
-    phrases.push(RAISONS[critereFaible.cle](critereFaible))
-  }
-
-  if (voile.tailleRetenue) {
-    const accroche =
-      palier.ton === 'go'
-        ? `Prends ta ${voile.tailleRetenue} m².`
-        : `Si tu y vas quand même, pars sur ta ${voile.tailleRetenue} m².`
-    phrases.push(accroche)
-  } else if (voile.tailleIdeale && vent >= 8) {
-    phrases.push(
-      `Aucune voile de ton quiver ne colle : il te faudrait plutôt du ${voile.tailleIdeale.toFixed(0)} m².`,
-    )
-  }
-
-  return {
-    niveau: palier.niveau,
-    ton: palier.ton,
-    titre: palier.titre,
-    phrase: phrases.join(' '),
-  }
-}
-
-function describeDirection(analyse: AnalyseConditions): string {
-  const label = analyse.direction.label.toLowerCase()
-  if (analyse.direction.score >= 0.9) return `en ${label}`
-  if (analyse.direction.score >= 0.5) return `en ${label}`
-  return `en ${label}`
-}
-
-function trouverMaillonFaible(criteres: Critere[]): Critere | null {
-  const trie = [...criteres].sort((a, b) => a.score - b.score)
-  return trie[0] ?? null
-}
-
-const RAISONS: Record<Critere['cle'], (c: Critere) => string> = {
-  vent: () => 'Le point faible, c’est la force du vent.',
-  direction: (c) => `Le bémol vient de l’orientation : ${c.valeur.toLowerCase()} sur ce spot.`,
-  regularite: () => 'Attends-toi à un vent irrégulier, avec des molles à gérer.',
-  materiel: (c) => c.commentaire,
-  confort: () => 'Habille-toi en conséquence, il ne fera pas chaud.',
+  const palier =
+    SEUILS_VERDICT.find((s) => analyse.scoreGlobal >= s.min) ?? SEUILS_VERDICT[SEUILS_VERDICT.length - 1]
+  return { titre: palier.titre, sousTitre: palier.sousTitre, ton: palier.ton }
 }
