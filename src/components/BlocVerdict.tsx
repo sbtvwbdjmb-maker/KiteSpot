@@ -107,22 +107,36 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
               transition={{ duration: 0.5, delay: 0.18 }}
               className="mt-7 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4"
             >
-              {analyse.lectures.map((lecture) => (
-                <div key={lecture.icone + lecture.unite} className="min-w-0">
-                  <span aria-hidden className="text-[13px] opacity-70">
-                    {lecture.icone}
-                  </span>
-                  <dd className="mt-0.5 min-w-0">
-                    <span className="tabular font-mono text-2xl text-foam">{lecture.valeur}</span>
-                    <span className="ml-1 font-mono text-[11px] text-muted">{lecture.unite}</span>
-                  </dd>
-                  {lecture.detail && (
+              {analyse.lectures.map((lecture) => {
+                // Un jugement se lit en toutes lettres : on le compose en
+                // linéale, alors qu'une mesure garde la chasse fixe.
+                const estJugement = !/[\d~]/.test(lecture.valeur)
+                return (
+                  <div key={lecture.icone + lecture.unite} className="min-w-0">
+                    <span aria-hidden className="text-[22px] leading-none">
+                      {lecture.icone}
+                    </span>
+                    <dd className="mt-1.5 min-w-0">
+                      <span
+                        className={
+                          estJugement
+                            ? 'font-display text-xl leading-tight font-semibold text-foam'
+                            : 'tabular font-mono text-2xl text-foam'
+                        }
+                      >
+                        {lecture.valeur}
+                      </span>
+                      {!estJugement && (
+                        <span className="ml-1 font-mono text-[11px] text-muted">{lecture.unite}</span>
+                      )}
+                    </dd>
+                    {/* Sous le jugement, la mesure qui l'a produit reste lisible */}
                     <dt className="mt-0.5 truncate font-mono text-[10px] text-dim">
-                      {lecture.detail}
+                      {estJugement ? (lecture.detail ?? lecture.unite) : lecture.detail}
                     </dt>
-                  )}
-                </div>
-              ))}
+                  </div>
+                )
+              })}
             </motion.dl>
           )}
         </div>

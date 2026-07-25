@@ -3,6 +3,7 @@ import type { NiveauRider, Profil } from '../types/profile'
 import type { ConditionsHoraires } from '../services/weather'
 import type { ConditionsMarines } from '../services/marine'
 import { analyserDirection, type OrientationVent } from './direction'
+import { ecartAngulaire } from './geo'
 import type { Critere } from './scoring'
 
 export interface AnalyseSurf {
@@ -50,6 +51,32 @@ const SCORE_ORIENTATION_SURF: Record<OrientationVent, { score: number; commentai
   onshore: { score: 0.15, commentaire: 'Vent de mer : vagues désorganisées qui ferment.' },
 }
 
+/**
+ * Une houle n'atteint la plage que si elle vient du large. On compare donc sa
+ * provenance au cap vers le large : plus l'écart est faible, plus la houle
+ * entre droit dans le spot. Au-delà d'un quart de tour, elle longe la côte
+ * ou vient de terre, et il ne reste presque rien à l'arrivée.
+ */
+export function scoreDirectionHoule(
+  directionHouleDeg: number,
+  orientationLittoral: number,
+): number {
+  const ecart = ecartAngulaire(directionHouleDeg, orientationLittoral)
+  if (ecart <= 30) return 1
+  if (ecart <= 60) return 0.85
+  if (ecart <= 90) return 0.55
+  if (ecart <= 120) return 0.25
+  return 0.05
+}
+
+function commentaireDirectionHoule(ecart: number): string {
+  if (ecart <= 30) return 'Houle bien en face du spot, elle entre droit dedans.'
+  if (ecart <= 60) return 'Houle légèrement oblique, elle rentre bien.'
+  if (ecart <= 90) return 'Houle de biais : une partie de l’énergie passe à côté.'
+  if (ecart <= 120) return 'Houle très oblique, peu d’énergie arrive au bord.'
+  return 'Houle mal orientée pour ce spot : elle n’atteint pas la plage.'
+}
+
 // Un vent faible reste préférable quelle que soit son orientation
 function scoreForceVent(ventNoeuds: number): number {
   if (ventNoeuds < 5) return 1
@@ -82,7 +109,13 @@ function scorePeriode(periodeS: number): number {
   return 1
 }
 
-const POIDS = { hauteur: 0.35, periode: 0.22, orientationVent: 0.25, forceVent: 0.18 }
+const POIDS = {
+  hauteur: 0.3,
+  periode: 0.18,
+  directionHoule: 0.18,
+  orientationVent: 0.2,
+  forceVent: 0.14,
+}
 
 export function analyserSurf(
   meteo: ConditionsHoraires,
@@ -144,6 +177,18 @@ export function analyserSurf(
     })
   }
 
+  // La houle ne compte que si on connaît l'orientation du littoral
+  if (marine.directionHouleDeg !== null && lieu.orientation !== null) {
+    const ecart = ecartAngulaire(marine.directionHouleDeg, lieu.orientation)
+    criteres.push({
+      cle: 'materiel',
+      label: 'Orientation de la houle',
+      score: scoreDirectionHoule(marine.directionHouleDeg, lieu.orientation),
+      valeur: `${Math.round(ecart)}° d’écart`,
+      commentaire: commentaireDirectionHoule(ecart),
+    })
+  }
+
   if (qualiteVent) {
     criteres.push({
       cle: 'direction',
@@ -166,6 +211,7 @@ export function analyserSurf(
   const poidsParCle: Record<string, number> = {
     vent: POIDS.hauteur,
     regularite: POIDS.periode,
+    materiel: POIDS.directionHoule,
     direction: POIDS.orientationVent,
     confort: POIDS.forceVent,
   }

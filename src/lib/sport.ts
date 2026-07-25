@@ -6,7 +6,9 @@ import { analyserConditions, scoreHoraire, type Critere } from './scoring'
 import { construireVerdict, type Verdict } from './verdict'
 import { analyserSurf } from './surf'
 import { construireVerdictSurf } from './verdict-surf'
-import { degresVersCardinal } from './direction'
+import { degresVersCardinal, qualiteEnMots } from './direction'
+import { scoreDirectionHoule } from './surf'
+import { ecartAngulaire } from './geo'
 
 export type Sport = 'kite' | 'surf'
 
@@ -82,8 +84,12 @@ export function analyserPourSport(
         },
         {
           icone: '🧭',
-          valeur: degresVersCardinal(meteoHoraire.directionDeg),
-          unite: a.direction ? a.direction.label.toLowerCase() : 'non évaluée',
+          // On juge la direction au lieu de laisser le rider traduire « ONO »
+          valeur: a.direction ? qualiteEnMots(a.direction.score, 'kite') : '—',
+          unite: 'direction',
+          detail: a.direction
+            ? `${a.direction.label.toLowerCase()} · ${degresVersCardinal(meteoHoraire.directionDeg)}`
+            : 'non évaluée',
         },
         {
           icone: '🪁',
@@ -127,20 +133,29 @@ export function analyserPourSport(
       unite: 's',
       detail: 'période',
     })
+    const houle = marineHoraire.directionHouleDeg
     lectures.push({
       icone: '🧭',
       valeur:
-        marineHoraire.directionHouleDeg !== null
-          ? degresVersCardinal(marineHoraire.directionHouleDeg)
+        houle !== null && lieu.orientation !== null
+          ? qualiteEnMots(scoreDirectionHoule(houle, lieu.orientation), 'surf')
           : '—',
       unite: 'houle',
+      detail:
+        houle !== null
+          ? lieu.orientation !== null
+            ? `${degresVersCardinal(houle)} · ${Math.round(ecartAngulaire(houle, lieu.orientation))}° d’écart`
+            : degresVersCardinal(houle)
+          : 'indisponible',
     })
   }
   lectures.push({
     icone: '💨',
     valeur: String(Math.round(meteoHoraire.ventNoeuds)),
     unite: 'nds',
-    detail: a.qualiteVent ? a.qualiteVent.label.toLowerCase() : undefined,
+    detail: a.qualiteVent
+      ? `${qualiteEnMots(a.qualiteVent.score, 'surf').toLowerCase()} · ${a.qualiteVent.label.toLowerCase()}`
+      : undefined,
   })
 
   return {

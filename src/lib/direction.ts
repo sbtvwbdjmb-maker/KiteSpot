@@ -29,6 +29,41 @@ export function degresVersCardinal(deg: number): string {
   return POINTS_CARDINAUX[(index + 16) % 16]
 }
 
+/**
+ * Traduit un score d'orientation en jugement lisible.
+ *
+ * Le point cardinal (« ONO ») et le terme technique (« side-offshore »)
+ * n'ont de sens que pour qui sait déjà les interpréter. C'est justement le
+ * travail que KiteSpot doit faire à la place du rider : on affiche donc le
+ * jugement en grand, et le terme technique en petit pour ceux qui le lisent.
+ *
+ * Le vocabulaire diffère selon le sport : en kite, un vent de terre est un
+ * danger ; en surf, il est simplement plus ou moins bon pour la vague.
+ */
+const MOTS_QUALITE = {
+  kite: [
+    { min: 0.95, mot: 'Parfait' },
+    { min: 0.8, mot: 'Très bien' },
+    { min: 0.6, mot: 'Bien' },
+    { min: 0.45, mot: 'Correct' },
+    { min: 0.25, mot: 'Risqué' },
+    { min: 0, mot: 'Danger' },
+  ],
+  surf: [
+    { min: 0.95, mot: 'Parfait' },
+    { min: 0.8, mot: 'Très bien' },
+    { min: 0.6, mot: 'Bien' },
+    { min: 0.45, mot: 'Correct' },
+    { min: 0.25, mot: 'Médiocre' },
+    { min: 0, mot: 'Mauvais' },
+  ],
+} as const
+
+export function qualiteEnMots(score: number, sport: 'kite' | 'surf' = 'kite'): string {
+  const echelle = MOTS_QUALITE[sport]
+  return (echelle.find((p) => score >= p.min) ?? echelle[echelle.length - 1]).mot
+}
+
 const BASES: Record<OrientationVent, { score: number; label: string; commentaire: string }> = {
   'side-shore': {
     score: 1,
