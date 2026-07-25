@@ -21,6 +21,7 @@ import { CreationProfil } from './components/CreationProfil'
 import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
 import { HeroAccueil } from '@/components/ui/hero-accueil'
+import { ChampVent } from '@/components/ui/champ-vent'
 
 export default function App() {
   const { profils, profilActif, selectionner, ajouter, modifier, supprimer } = useProfils()
@@ -218,6 +219,13 @@ export default function App() {
   return (
     <div className="relative min-h-screen">
       <div className="ambiance" aria-hidden />
+      {/* Champ de vent animé, piloté par les conditions réellement affichées */}
+      {conditionsAffichees && (
+        <ChampVent
+          ventNoeuds={conditionsAffichees.ventNoeuds}
+          directionDeg={conditionsAffichees.directionDeg}
+        />
+      )}
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3 py-4">
