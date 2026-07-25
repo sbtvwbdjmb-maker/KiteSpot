@@ -11,9 +11,19 @@ export interface ConditionsHoraires {
   couvertureNuageusePct: number
 }
 
+/** Lever et coucher du soleil d'une journée, indexés par date ISO (AAAA-MM-JJ) */
+export interface JourSoleil {
+  date: string
+  leverSoleil: string
+  coucherSoleil: string
+}
+
 export interface MeteoSpot {
   actuel: ConditionsHoraires
   previsions: ConditionsHoraires[]
+  /** un élément par jour de prévision */
+  jours: JourSoleil[]
+  /** raccourcis sur le jour courant */
   leverSoleil: string
   coucherSoleil: string
 }
@@ -58,7 +68,7 @@ export async function fetchMeteo(lat: number, lon: number): Promise<MeteoSpot> {
     'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover',
   )
   url.searchParams.set('daily', 'sunrise,sunset')
-  url.searchParams.set('forecast_days', '2')
+  url.searchParams.set('forecast_days', '7')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
 
@@ -86,11 +96,18 @@ export async function fetchMeteo(lat: number, lon: number): Promise<MeteoSpot> {
     couvertureNuageusePct: data.hourly.cloud_cover[i],
   }))
 
+  const jours: JourSoleil[] = data.daily.time.map((date, i) => ({
+    date,
+    leverSoleil: data.daily.sunrise[i],
+    coucherSoleil: data.daily.sunset[i],
+  }))
+
   return {
     actuel,
     previsions,
-    leverSoleil: data.daily.sunrise[0],
-    coucherSoleil: data.daily.sunset[0],
+    jours,
+    leverSoleil: jours[0]?.leverSoleil,
+    coucherSoleil: jours[0]?.coucherSoleil,
   }
 }
 

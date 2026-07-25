@@ -78,7 +78,7 @@ export async function fetchMarine(
   url.searchParams.set('longitude', String(lon))
   url.searchParams.set('current', [...CHAMPS, 'sea_surface_temperature'].join(','))
   url.searchParams.set('hourly', CHAMPS.join(','))
-  url.searchParams.set('forecast_days', '2')
+  url.searchParams.set('forecast_days', '7')
   url.searchParams.set('timezone', 'auto')
 
   try {

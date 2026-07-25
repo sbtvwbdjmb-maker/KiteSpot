@@ -9,6 +9,8 @@ interface Props {
   ventNoeuds: number
   rafalesNoeuds: number
   analyse: AnalyseDirection | null
+  /** provenance de la houle, affichée en surf quand la donnée existe */
+  directionHouleDeg?: number | null
 }
 
 const C = 110 // centre
@@ -27,6 +29,7 @@ export function CadranVent({
   ventNoeuds,
   rafalesNoeuds,
   analyse,
+  directionHouleDeg = null,
 }: Props) {
   // Sans analyse de direction, la flèche reste neutre : aucune couleur ne doit
   // laisser croire qu'on a jugé une orientation qu'on ne connaît pas.
@@ -109,6 +112,31 @@ export function CadranVent({
           <line x1={C} y1={C - 88} x2={C} y2={C - 58} stroke={couleur} strokeWidth="3.5" strokeLinecap="round" />
           <path d={`M${C} ${C - 46} L${C - 8.5} ${C - 63} L${C + 8.5} ${C - 63} Z`} fill={couleur} />
         </g>
+
+        {/* Houle : trait plus large et plus sombre, distinct de la flèche de vent */}
+        {directionHouleDeg !== null && (
+          <g
+            className="transition-cadran"
+            style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionHouleDeg}deg)` }}
+          >
+            <path
+              d={`M${C - 13} ${C - 84} Q${C} ${C - 76} ${C + 13} ${C - 84}`}
+              fill="none"
+              stroke="#5ec8e8"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              opacity="0.9"
+            />
+            <path
+              d={`M${C - 9} ${C - 74} Q${C} ${C - 67} ${C + 9} ${C - 74}`}
+              fill="none"
+              stroke="#5ec8e8"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.55"
+            />
+          </g>
+        )}
 
         <circle cx={C} cy={C} r="4" fill="var(--color-foam)" opacity="0.5" />
       </svg>

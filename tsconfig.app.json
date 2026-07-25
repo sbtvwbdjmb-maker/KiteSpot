@@ -8,8 +8,9 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
-    /* Alias @/ vers src, convention shadcn */
-    "baseUrl": ".",
+    /* Alias @/ vers src, convention shadcn.
+       Sans baseUrl : déprécié depuis TypeScript 6, les chemins sont résolus
+       relativement à ce fichier de configuration. */
     "paths": {
       "@/*": ["./src/*"]
     },

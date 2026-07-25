@@ -1,54 +1,121 @@
 import { useMemo } from 'react'
-import type { ConditionsHoraires } from '../services/weather'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { Lieu } from '../types/lieu'
 import type { Profil } from '../types/profile'
-import { scoreHoraire, type Creneau } from '../lib/scoring'
+import type { MeteoSpot } from '../services/weather'
+import type { DonneesMarines } from '../services/marine'
+import { scoreHorairePourSport, meilleurCreneauSport, type Sport } from '../lib/sport'
+import { resumerJours } from '../lib/jours'
+import { couleurScore, SEUILS_COULEUR } from '../lib/couleurs'
+import { CarrouselDefilant } from '@/components/ui/carrousel-defilant'
 
 interface Props {
-  previsions: ConditionsHoraires[]
+  sport: Sport
+  meteo: MeteoSpot
+  marine: DonneesMarines
   lieu: Lieu
   profil: Profil
-  creneau: Creneau | null
   heureSelectionnee: string | null
-  onSelectionner: (heure: string | null) => void
-  coucherSoleil: string
-}
-
-/** Trois niveaux seulement : on doit lire la journée d'un coup d'œil. */
-function couleurScore(score: number): string {
-  if (score >= 6.8) return 'var(--color-go)'
-  if (score >= 3.8) return 'var(--color-warn)'
-  return 'var(--color-stop)'
+  onSelectionnerHeure: (heure: string | null) => void
+  dateSelectionnee: string
+  onSelectionnerDate: (date: string) => void
 }
 
 export function Timeline({
-  previsions,
+  sport,
+  meteo,
+  marine,
   lieu,
   profil,
-  creneau,
   heureSelectionnee,
-  onSelectionner,
-  coucherSoleil,
+  onSelectionnerHeure,
+  dateSelectionnee,
+  onSelectionnerDate,
 }: Props) {
+  const reduit = useReducedMotion()
+
+  const jours = useMemo(
+    () => resumerJours(meteo, marine, lieu, profil, sport),
+    [meteo, marine, lieu, profil, sport],
+  )
+
+  const jourActif = jours.find((j) => j.date === dateSelectionnee) ?? jours[0]
+  const estAujourdhui = jourActif?.date === jours[0]?.date
+
+  // Aujourd'hui on part de l'heure courante ; les autres jours, de la journée entière
   const heures = useMemo(() => {
-    const depuis = Date.now() - 3600_000
-    return previsions
+    if (!jourActif) return []
+    const depuis = estAujourdhui ? Date.now() - 3600_000 : 0
+    return jourActif.heures
       .filter((h) => new Date(h.heure).getTime() >= depuis)
-      .slice(0, 18)
-      .map((h) => ({ ...h, score: scoreHoraire(h, lieu, profil) }))
-  }, [previsions, lieu, profil])
+      .map((h) => ({
+        ...h,
+        score: scoreHorairePourSport(sport, h, marine, lieu, profil),
+      }))
+  }, [jourActif, estAujourdhui, sport, marine, lieu, profil])
 
-  if (heures.length === 0) return null
+  const { creneau, donneesIncompletes } = useMemo(() => {
+    if (!jourActif) return { creneau: null, donneesIncompletes: true }
+    // Pour un jour futur, on cherche le créneau depuis son lever de soleil
+    const depart = estAujourdhui ? new Date() : new Date(jourActif.leverSoleil)
+    return meilleurCreneauSport(
+      sport,
+      { ...meteo, previsions: jourActif.heures, coucherSoleil: jourActif.coucherSoleil },
+      marine,
+      lieu,
+      profil,
+      depart,
+    )
+  }, [sport, meteo, marine, lieu, profil, jourActif, estAujourdhui])
 
-  const ventMax = Math.max(18, ...heures.map((h) => h.ventNoeuds))
+  if (!jourActif) return null
+
+  const coucher = new Date(jourActif.coucherSoleil).getTime()
+  const lever = new Date(jourActif.leverSoleil).getTime()
   const debutCreneau = creneau ? new Date(creneau.debut).getTime() : null
   const finCreneau = creneau ? new Date(creneau.fin).getTime() : null
-  const coucher = new Date(coucherSoleil).getTime()
 
   return (
     <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-mono text-[11px] tracking-[0.22em] text-muted">AUJOURD’HUI</h3>
+      {/* Sélecteur de jour */}
+      <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Jour">
+        {jours.map((jour) => {
+          const actif = jour.date === jourActif.date
+          return (
+            <button
+              key={jour.date}
+              type="button"
+              role="tab"
+              aria-selected={actif}
+              onClick={() => {
+                onSelectionnerDate(jour.date)
+                onSelectionnerHeure(null)
+              }}
+              className={`flex shrink-0 flex-col items-center gap-1.5 rounded-xl border px-3 py-2 transition-colors ${
+                actif ? 'border-foam/40 bg-raised' : 'border-line/60 hover:bg-raised/60'
+              }`}
+            >
+              <span className={`font-mono text-[11px] ${actif ? 'text-foam' : 'text-muted'}`}>
+                {jour.label}
+              </span>
+              <span
+                className="h-2 w-6 rounded-full"
+                style={{ background: couleurScore(jour.meilleurScore) }}
+                title={
+                  jour.meilleurScore === null
+                    ? 'Données indisponibles'
+                    : `Meilleur score ${jour.meilleurScore.toFixed(1)}/10`
+                }
+              />
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-mono text-[11px] tracking-[0.22em] text-muted">
+          {estAujourdhui ? 'AUJOURD’HUI' : jourActif.label.toUpperCase()}
+        </h3>
         {creneau ? (
           <p className="text-[13px]">
             <span className="font-mono text-[11px] tracking-wide" style={{ color: 'var(--color-go)' }}>
@@ -64,63 +131,79 @@ export function Timeline({
             </span>
           </p>
         ) : (
-          <p className="text-[13px] text-dim">Aucun créneau exploitable d’ici ce soir</p>
+          <p className="text-[13px]" style={{ color: 'var(--color-stop)' }}>
+            {donneesIncompletes ? 'Données insuffisantes ce jour-là' : 'Aucun bon créneau'}
+          </p>
         )}
       </div>
 
-      <div className="rail -mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
-        {heures.map((h) => {
-          const t = new Date(h.heure).getTime()
-          const dansCreneau = debutCreneau !== null && finCreneau !== null && t >= debutCreneau && t <= finCreneau
-          const selectionnee = heureSelectionnee === h.heure
-          const apresCoucher = t > coucher
-          const couleur = couleurScore(h.score)
+      {heures.length === 0 ? (
+        <p className="py-6 text-center text-[13px] text-dim">Aucune heure à afficher.</p>
+      ) : (
+        <CarrouselDefilant largeurFondu={28}>
+          {heures.map((h) => {
+            const t = new Date(h.heure).getTime()
+            const dansCreneau =
+              debutCreneau !== null && finCreneau !== null && t >= debutCreneau && t <= finCreneau
+            const selectionnee = heureSelectionnee === h.heure
+            const nuit = t > coucher || t < lever
+            const couleur = couleurScore(h.score)
 
-          return (
-            <button
-              key={h.heure}
-              type="button"
-              onClick={() => onSelectionner(selectionnee ? null : h.heure)}
-              aria-pressed={selectionnee}
-              aria-label={`${new Date(h.heure).toLocaleTimeString('fr-FR', { hour: '2-digit' })} — ${Math.round(h.ventNoeuds)} nœuds, score ${h.score.toFixed(1)} sur 10`}
-              className={`flex w-[2.9rem] shrink-0 flex-col items-center gap-2 rounded-xl border px-1 py-2.5 transition-colors ${
-                selectionnee
-                  ? 'border-foam/45 bg-raised'
-                  : dansCreneau
-                    ? 'border-transparent bg-go/10'
-                    : 'border-transparent hover:bg-raised/60'
-              } ${apresCoucher ? 'opacity-45' : ''}`}
-            >
-              <span className="tabular font-mono text-[10px] text-muted">
-                {new Date(h.heure).toLocaleTimeString('fr-FR', { hour: '2-digit' })}
-              </span>
+            return (
+              <motion.button
+                key={h.heure}
+                type="button"
+                onClick={() => onSelectionnerHeure(selectionnee ? null : h.heure)}
+                aria-pressed={selectionnee}
+                aria-label={`${new Date(h.heure).toLocaleTimeString('fr-FR', { hour: '2-digit' })} — ${
+                  h.score === null ? 'données indisponibles' : `score ${h.score.toFixed(1)} sur 10`
+                }`}
+                whileHover={reduit ? undefined : { y: -3 }}
+                transition={{ duration: 0.18 }}
+                className={`flex w-[3.1rem] shrink-0 flex-col items-center gap-2 rounded-xl border px-1 py-2.5 transition-colors ${
+                  selectionnee
+                    ? 'border-foam/50 bg-raised'
+                    : dansCreneau
+                      ? 'border-transparent bg-go/10'
+                      : 'border-transparent hover:bg-raised/60'
+                } ${nuit ? 'opacity-40' : ''}`}
+              >
+                <span className="tabular font-mono text-[10px] text-muted">
+                  {new Date(h.heure).toLocaleTimeString('fr-FR', { hour: '2-digit' })}
+                </span>
 
-              {/* La pastille porte la qualité, la barre porte la force */}
-              <span
-                className="h-2.5 w-2.5 rounded-full transition-colors"
-                style={{ background: couleur }}
-              />
-
-              <span className="flex h-12 w-full items-end justify-center">
+                {/* Le carré porte la qualité : sa couleur sort du score calculé */}
                 <span
-                  className="w-1.5 rounded-full transition-[height] duration-500"
+                  className="h-7 w-7 rounded-lg"
                   style={{
-                    height: `${Math.max(10, (h.ventNoeuds / ventMax) * 100)}%`,
                     background: couleur,
-                    opacity: 0.55,
+                    opacity: h.score === null ? 0.25 : 1,
                   }}
                 />
+
+                <span className="tabular font-mono text-[11px] text-foam">
+                  {h.score === null ? '—' : h.score.toFixed(1)}
+                </span>
+              </motion.button>
+            )
+          })}
+        </CarrouselDefilant>
+      )}
+
+      {/* Légende : la même échelle pour le kite et le surf */}
+      <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5">
+        {SEUILS_COULEUR.map((seuil) => (
+          <li key={seuil.cle} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: seuil.variable }} />
+            <span className="text-[11px] text-dim">
+              {seuil.libelle}
+              <span className="tabular ml-1 font-mono opacity-70">
+                {seuil.min === 0 ? '< 4' : `${seuil.min}+`}
               </span>
-
-              <span className="tabular font-mono text-[12px] text-foam">{Math.round(h.ventNoeuds)}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      <p className="mt-3 text-[12px] text-dim">
-        Touche une heure pour voir le verdict à ce moment-là.
-      </p>
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

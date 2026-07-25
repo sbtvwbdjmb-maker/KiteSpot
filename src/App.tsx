@@ -8,8 +8,8 @@ import { useLocalStorage } from './hooks/useLocalStorage'
 import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
 import { distanceKm, formaterDistance } from './lib/geo'
-import { analyserConditions, meilleurCreneau } from './lib/scoring'
-import { construireVerdict } from './lib/verdict'
+import { analyserPourSport, type Sport } from './lib/sport'
+import { NavSport } from '@/components/ui/nav-sport'
 import { BlocVerdict } from './components/BlocVerdict'
 import { Timeline } from './components/Timeline'
 import { Criteres } from './components/Criteres'
@@ -49,6 +49,8 @@ export default function App() {
   const [modale, setModale] = useState<'lieu' | 'profil' | 'nouveau-profil' | null>(null)
   const [menuProfilOuvert, setMenuProfilOuvert] = useState(false)
   const [heureSelectionnee, setHeureSelectionnee] = useState<string | null>(null)
+  const [sport, setSport] = useLocalStorage<Sport>('kitespot.sport.v1', 'kite')
+  const [dateSelectionnee, setDateSelectionnee] = useState<string>('')
   const [resolutionEnCours, setResolutionEnCours] = useState(false)
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
 
@@ -142,15 +144,17 @@ export default function App() {
 
   const analyse = useMemo(() => {
     if (!lieu || !profilActif || !conditionsAffichees) return null
-    return analyserConditions(conditionsAffichees, marine, lieu, profilActif)
-  }, [marine, lieu, profilActif, conditionsAffichees])
+    return analyserPourSport(
+      sport,
+      conditionsAffichees,
+      marine,
+      lieu,
+      profilActif,
+      heureSelectionnee === null,
+    )
+  }, [sport, marine, lieu, profilActif, conditionsAffichees, heureSelectionnee])
 
-  const verdict = useMemo(() => (analyse ? construireVerdict(analyse) : null), [analyse])
-
-  const creneau = useMemo(() => {
-    if (!meteo || !lieu || !profilActif) return null
-    return meilleurCreneau(meteo.previsions, lieu, profilActif, new Date(), meteo.coucherSoleil)
-  }, [meteo, lieu, profilActif])
+  const verdict = analyse?.verdict ?? null
 
   // Spots proposés sur l'écran d'accueil : les plus proches si on connaît la
   // position, sinon les plus discrets — c'est là qu'on fait découvrir la base.
@@ -160,6 +164,18 @@ export default function App() {
     }
     return [...SPOTS].sort((a, b) => a.popularite - b.popularite).slice(0, 10)
   }, [position, distances])
+
+  // Changer de sport remet la lecture à maintenant : les scores ne sont pas comparables
+  useEffect(() => {
+    setHeureSelectionnee(null)
+  }, [sport])
+
+  // Par défaut on regarde aujourd'hui
+  useEffect(() => {
+    if (meteo?.jours?.[0] && !meteo.jours.some((j) => j.date === dateSelectionnee)) {
+      setDateSelectionnee(meteo.jours[0].date)
+    }
+  }, [meteo, dateSelectionnee])
 
   // La page prend la couleur de la réponse
   useEffect(() => {
@@ -203,10 +219,12 @@ export default function App() {
       <div className="ambiance" aria-hidden />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
-        <header className="flex items-center justify-between gap-3 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 py-4">
           <span className="font-display text-[15px] font-bold tracking-tight text-foam">
             Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
           </span>
+
+          <NavSport actif={sport} onChanger={setSport} />
 
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -274,27 +292,29 @@ export default function App() {
               </div>
             )}
 
-            {analyse && verdict && conditionsAffichees && meteo && (
+            {analyse && conditionsAffichees && meteo && (
               <>
                 <BlocVerdict
                   lieu={lieu}
                   analyse={analyse}
-                  verdict={verdict}
-                  conditions={conditionsAffichees}
+                  ventNoeuds={conditionsAffichees.ventNoeuds}
+                  rafalesNoeuds={conditionsAffichees.rafalesNoeuds}
                   heureProjetee={heureSelectionnee}
                 />
 
                 <Timeline
-                  previsions={meteo.previsions}
+                  sport={sport}
+                  meteo={meteo}
+                  marine={marine}
                   lieu={lieu}
                   profil={profilActif}
-                  creneau={creneau}
                   heureSelectionnee={heureSelectionnee}
-                  onSelectionner={setHeureSelectionnee}
-                  coucherSoleil={meteo.coucherSoleil}
+                  onSelectionnerHeure={setHeureSelectionnee}
+                  dateSelectionnee={dateSelectionnee}
+                  onSelectionnerDate={setDateSelectionnee}
                 />
 
-                <Criteres criteres={analyse.criteres} />
+                {analyse.criteres.length > 0 && <Criteres criteres={analyse.criteres} />}
 
                 {lieu.acces && (
                   <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
