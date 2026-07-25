@@ -28,8 +28,8 @@ export function useGeolocation() {
         (err) => {
           const message =
             err.code === err.PERMISSION_DENIED
-              ? 'Position refusée : utilisez la recherche par ville'
-              : 'Impossible de récupérer votre position'
+              ? 'Localisation refusée : choisis ton spot à la main.'
+              : 'Position introuvable : choisis ton spot à la main.'
           setEtat({ statut: 'erreur', erreur: message })
           reject(new Error(message))
         },

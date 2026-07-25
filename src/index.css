@@ -1,1 +1,130 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   KiteSpot — système de tokens
+   Direction : instrument de bord maritime. Fond « eau profonde », cartes en
+   verre, et une couleur d'accent qui n'est pas décorative : c'est la réponse.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-abyss: #04141c;
+  --color-deep: #072530;
+  --color-surface: #0c313f;
+  --color-raised: #114150;
+  --color-line: #1b5063;
+  --color-foam: #e8f4f2;
+  --color-muted: #86a9b2;
+  --color-dim: #587b85;
+
+  /* Couleurs de verdict — sémantiques, jamais décoratives */
+  --color-go: #2fe3a0;
+  --color-warn: #ffc247;
+  --color-stop: #ff6a5a;
+
+  /* Terre / mer du cadran : la terre reste sourde, c'est un repère, pas un sujet */
+  --color-land: #14302a;
+  --color-sea: #072634;
+
+  --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  /* Teinte ambiante pilotée par le verdict, mise à jour depuis React */
+  --verdict: var(--color-go);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-abyss);
+  color: var(--color-foam);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* La page prend la couleur de la réponse : on comprend avant de lire */
+.ambiance {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(90rem 45rem at 50% -12%, color-mix(in oklab, var(--verdict) 22%, transparent), transparent 65%),
+    radial-gradient(50rem 40rem at 110% 8%, color-mix(in oklab, var(--verdict) 10%, transparent), transparent 60%);
+  transition: background 900ms ease;
+}
+
+/* Chiffres tabulaires partout où une valeur mesurée est affichée */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Animations d'entrée, orchestrées une seule fois au chargement --- */
+@keyframes monte {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.monte {
+  animation: monte 620ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes pulseDouce {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-douce {
+  animation: pulseDouce 2.4s ease-in-out infinite;
+}
+
+/* Le cadran et la flèche de vent s'orientent avec de l'inertie */
+.transition-cadran {
+  transition:
+    transform 1100ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 500ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Accessibilité clavier : un anneau visible et cohérent */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--verdict);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Masque la scrollbar des rails horizontaux sans casser le défilement */
+.rail {
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}

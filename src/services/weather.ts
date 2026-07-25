@@ -1,15 +1,21 @@
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 
-export interface ConditionsVent {
+/** Une observation ou une prévision horaire, telle que fournie par Open-Meteo */
+export interface ConditionsHoraires {
   heure: string
-  vitesseNoeuds: number
-  directionDeg: number
+  ventNoeuds: number
   rafalesNoeuds: number
+  directionDeg: number
+  temperatureC: number
+  precipitationMm: number
+  couvertureNuageusePct: number
 }
 
-export interface DonneesVent {
-  actuel: ConditionsVent
-  previsions: ConditionsVent[]
+export interface MeteoSpot {
+  actuel: ConditionsHoraires
+  previsions: ConditionsHoraires[]
+  leverSoleil: string
+  coucherSoleil: string
 }
 
 interface ReponseOpenMeteo {
@@ -18,56 +24,103 @@ interface ReponseOpenMeteo {
     wind_speed_10m: number
     wind_direction_10m: number
     wind_gusts_10m: number
+    temperature_2m: number
+    precipitation: number
+    cloud_cover: number
   }
-  hourly?: {
+  hourly: {
     time: string[]
     wind_speed_10m: number[]
     wind_direction_10m: number[]
     wind_gusts_10m: number[]
+    temperature_2m: number[]
+    precipitation: number[]
+    cloud_cover: number[]
+  }
+  daily: {
+    time: string[]
+    sunrise: string[]
+    sunset: string[]
   }
 }
 
-// Récupère le vent actuel + prévisions horaires (en nœuds) pour un point donné
-export async function fetchVent(lat: number, lon: number, avecPrevisions = true): Promise<DonneesVent> {
+/** Récupère le vent, la température et les prévisions horaires pour un point donné */
+export async function fetchMeteo(lat: number, lon: number): Promise<MeteoSpot> {
   const url = new URL(FORECAST_URL)
   url.searchParams.set('latitude', String(lat))
   url.searchParams.set('longitude', String(lon))
-  url.searchParams.set('current', 'wind_speed_10m,wind_direction_10m,wind_gusts_10m')
-  if (avecPrevisions) {
-    url.searchParams.set('hourly', 'wind_speed_10m,wind_direction_10m,wind_gusts_10m')
-    url.searchParams.set('forecast_days', '2')
-  }
+  url.searchParams.set(
+    'current',
+    'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover',
+  )
+  url.searchParams.set(
+    'hourly',
+    'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover',
+  )
+  url.searchParams.set('daily', 'sunrise,sunset')
+  url.searchParams.set('forecast_days', '2')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
 
   const res = await fetch(url.toString())
-  if (!res.ok) {
-    throw new Error('Erreur lors de la récupération de la météo')
-  }
+  if (!res.ok) throw new Error('Open-Meteo a refusé la requête météo')
   const data: ReponseOpenMeteo = await res.json()
 
-  const actuel: ConditionsVent = {
+  const actuel: ConditionsHoraires = {
     heure: data.current.time,
-    vitesseNoeuds: data.current.wind_speed_10m,
-    directionDeg: data.current.wind_direction_10m,
+    ventNoeuds: data.current.wind_speed_10m,
     rafalesNoeuds: data.current.wind_gusts_10m,
+    directionDeg: data.current.wind_direction_10m,
+    temperatureC: data.current.temperature_2m,
+    precipitationMm: data.current.precipitation,
+    couvertureNuageusePct: data.current.cloud_cover,
   }
 
-  const previsions: ConditionsVent[] = data.hourly
-    ? data.hourly.time.map((heure, i) => ({
-        heure,
-        vitesseNoeuds: data.hourly!.wind_speed_10m[i],
-        directionDeg: data.hourly!.wind_direction_10m[i],
-        rafalesNoeuds: data.hourly!.wind_gusts_10m[i],
-      }))
-    : []
+  const previsions: ConditionsHoraires[] = data.hourly.time.map((heure, i) => ({
+    heure,
+    ventNoeuds: data.hourly.wind_speed_10m[i],
+    rafalesNoeuds: data.hourly.wind_gusts_10m[i],
+    directionDeg: data.hourly.wind_direction_10m[i],
+    temperatureC: data.hourly.temperature_2m[i],
+    precipitationMm: data.hourly.precipitation[i],
+    couvertureNuageusePct: data.hourly.cloud_cover[i],
+  }))
 
-  return { actuel, previsions }
+  return {
+    actuel,
+    previsions,
+    leverSoleil: data.daily.sunrise[0],
+    coucherSoleil: data.daily.sunset[0],
+  }
 }
 
-// Convertit une direction en degrés (météo : direction d'où vient le vent) en point cardinal
-export function degresVersCardinal(deg: number): string {
-  const points = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
-  const index = Math.round(deg / 22.5) % 16
-  return points[index]
+export interface VentActuel {
+  ventNoeuds: number
+  rafalesNoeuds: number
+  directionDeg: number
+  temperatureC: number
+}
+
+/**
+ * Version allégée : uniquement le vent instantané.
+ * Utilisée pour les vignettes de spots, où charger les prévisions complètes
+ * de chaque spot serait inutilement lourd.
+ */
+export async function fetchVentActuel(lat: number, lon: number): Promise<VentActuel> {
+  const url = new URL(FORECAST_URL)
+  url.searchParams.set('latitude', String(lat))
+  url.searchParams.set('longitude', String(lon))
+  url.searchParams.set('current', 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m')
+  url.searchParams.set('wind_speed_unit', 'kn')
+  url.searchParams.set('timezone', 'auto')
+
+  const res = await fetch(url.toString())
+  if (!res.ok) throw new Error('Open-Meteo a refusé la requête vent')
+  const data = await res.json()
+  return {
+    ventNoeuds: data.current.wind_speed_10m,
+    rafalesNoeuds: data.current.wind_gusts_10m,
+    directionDeg: data.current.wind_direction_10m,
+    temperatureC: data.current.temperature_2m,
+  }
 }
