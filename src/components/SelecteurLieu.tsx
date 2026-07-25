@@ -10,6 +10,8 @@ interface Props {
   distances: Record<string, number>
   positionConnue: boolean
   permissionGeoloc: EtatPermission
+  /** message affiché seulement après une tentative de localisation ratée */
+  messageGeoloc: string | null
   onChoisirResultat: (resultat: ResultatLieu) => void
   onUtiliserMaPosition: () => void
   onFermer: () => void
@@ -24,6 +26,7 @@ export function SelecteurLieu({
   distances,
   positionConnue,
   permissionGeoloc,
+  messageGeoloc,
   onChoisirResultat,
   onUtiliserMaPosition,
   onFermer,
@@ -89,39 +92,24 @@ export function SelecteurLieu({
 
   return (
     <Modale titre="Choisir un spot" onFermer={onFermer}>
-      {permissionGeoloc === 'refusee' ? (
-        // Un navigateur ne redemande jamais une permission refusée : le bouton
-        // resterait sans effet. On explique où la rétablir au lieu de l'afficher.
-        <div className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3">
-          <p className="text-[14px] font-medium text-foam">Localisation bloquée pour ce site</p>
-          <p className="mt-1 text-[12px] leading-snug text-muted">
-            Clique sur l’icône à gauche de l’adresse dans ton navigateur, autorise la position,
-            puis recharge la page. En attendant, cherche ton spot ci-dessous.
-          </p>
-        </div>
-      ) : permissionGeoloc === 'indisponible' ? (
-        <div className="mb-4 rounded-xl border border-line bg-surface/40 px-4 py-3">
-          <p className="text-[13px] text-muted">
-            Ce navigateur ne sait pas te localiser. Cherche ton spot ci-dessous.
-          </p>
-        </div>
-      ) : (
+      {/* Le bouton reste toujours proposé. Si la localisation est bloquée,
+          l'explication n'apparaît qu'après une tentative, en gris discret :
+          pas d'encadré d'avertissement là où l'utilisateur n'a rien demandé. */}
+      <div className="mb-4">
         <button
           type="button"
           onClick={() => {
-            onUtiliserMaPosition()
-            onFermer()
+            void onUtiliserMaPosition()
           }}
-          className="mb-4 w-full rounded-xl border border-line bg-surface/60 px-4 py-3 text-left text-[14px] text-foam transition-colors hover:bg-raised"
+          disabled={permissionGeoloc === 'indisponible'}
+          className="w-full rounded-xl border border-line bg-surface/60 px-4 py-3 text-left text-[14px] text-foam transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="font-medium">📍 Utiliser ma position</span>
-          <span className="mt-0.5 block text-[12px] text-dim">
-            {permissionGeoloc === 'accordee'
-              ? 'Détecte le lieu où tu te trouves'
-              : 'Ton navigateur va demander l’autorisation'}
-          </span>
         </button>
-      )}
+        {messageGeoloc && (
+          <p className="mt-2 px-1 text-[12px] leading-snug text-dim">{messageGeoloc}</p>
+        )}
+      </div>
 
       <input
         type="search"

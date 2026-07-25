@@ -49,7 +49,7 @@ export default function App() {
   const [resolutionEnCours, setResolutionEnCours] = useState(false)
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
 
-  const { localiser, permission: permissionGeoloc } = useGeolocation()
+  const { localiser, permission: permissionGeoloc, erreur: erreurGeoloc } = useGeolocation()
   const { meteo, marine, chargement, erreur, misAJourLe, rafraichir } = useConditions(lieu)
   const fraicheur = useFraicheur(misAJourLe)
 
@@ -86,6 +86,7 @@ export default function App() {
       )[0]
       if (proche && proche.d <= 15) {
         setLieu(spotVersLieu(proche.s))
+        setModale(null)
         return
       }
 
@@ -102,7 +103,9 @@ export default function App() {
           categorie: 'coords',
         },
       )
+      setModale(null)
     } catch (e) {
+      // Le message reste affiché dans le sélecteur, qui ne se ferme pas
       setMessageGeoloc(e instanceof Error ? e.message : 'Position indisponible')
     }
   }, [localiser, choisirResultat, setLieu])
@@ -367,6 +370,7 @@ export default function App() {
           distances={distances}
           positionConnue={position !== null}
           permissionGeoloc={permissionGeoloc}
+          messageGeoloc={erreurGeoloc ?? null}
           onChoisirResultat={choisirResultat}
           onUtiliserMaPosition={utiliserMaPosition}
           onFermer={() => setModale(null)}
