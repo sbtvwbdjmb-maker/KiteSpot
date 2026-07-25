@@ -19,6 +19,7 @@ import { MenuProfil } from './components/MenuProfil'
 import { CreationProfil } from './components/CreationProfil'
 import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
+import { HeroAccueil } from '@/components/ui/hero-accueil'
 
 const COULEUR_TON = {
   go: 'var(--color-go)',
@@ -150,6 +151,15 @@ export default function App() {
     if (!meteo || !lieu || !profilActif) return null
     return meilleurCreneau(meteo.previsions, lieu, profilActif, new Date(), meteo.coucherSoleil)
   }, [meteo, lieu, profilActif])
+
+  // Spots proposés sur l'écran d'accueil : les plus proches si on connaît la
+  // position, sinon les plus discrets — c'est là qu'on fait découvrir la base.
+  const spotsDecouverte = useMemo(() => {
+    if (position) {
+      return [...SPOTS].sort((a, b) => distances[a.id] - distances[b.id]).slice(0, 10)
+    }
+    return [...SPOTS].sort((a, b) => a.popularite - b.popularite).slice(0, 10)
+  }, [position, distances])
 
   // La page prend la couleur de la réponse
   useEffect(() => {
@@ -310,31 +320,26 @@ export default function App() {
             )}
           </main>
         ) : (
-          <main className="flex flex-1 flex-col items-center justify-center gap-5 py-20 text-center">
-            {/* Espace fine insécable avant le « ? » : il ne doit jamais partir seul à la ligne */}
-            <h1 className="max-w-md font-display text-[clamp(1.6rem,5vw,2.4rem)] leading-tight font-bold text-foam">
-              {`Où veux-tu kiter, ${profilActif.nom} ?`}
-            </h1>
-            <p className="max-w-sm text-[14px] leading-relaxed text-muted">
-              {messageGeoloc ?? 'Autorise la localisation ou cherche un spot.'}
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={utiliserMaPosition}
-                className="rounded-xl px-5 py-3 text-[14px] font-medium text-abyss"
-                style={{ background: 'var(--verdict)' }}
-              >
-                📍 Utiliser ma position
-              </button>
-              <button
-                type="button"
-                onClick={() => setModale('lieu')}
-                className="rounded-xl border border-line px-5 py-3 text-[14px] text-foam transition-colors hover:bg-surface"
-              >
-                Chercher un spot
-              </button>
-            </div>
+          <main className="flex flex-1 flex-col py-14">
+            <HeroAccueil
+              titre={`Où veux-tu kiter, ${profilActif.nom}\u202f?`}
+              sousTitre="KiteSpot lit le vent, le compare à ton poids et à ton niveau, puis te dit s’il faut y aller."
+              actionPrincipale={{ label: '\ud83d\udccd Utiliser ma position', onClick: utiliserMaPosition }}
+              actionSecondaire={{ label: 'Chercher un spot', onClick: () => setModale('lieu') }}
+              note={messageGeoloc ?? undefined}
+              spots={spotsDecouverte}
+              onChoisirSpot={(spot) =>
+                choisirResultat({
+                  cle: spot.id,
+                  nom: spot.name,
+                  localite: spot.locality,
+                  pays: spot.country,
+                  lat: spot.lat,
+                  lon: spot.lon,
+                  categorie: 'spot',
+                })
+              }
+            />
           </main>
         )}
       </div>
