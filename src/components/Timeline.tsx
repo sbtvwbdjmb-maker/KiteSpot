@@ -76,7 +76,7 @@ export function Timeline({
   const finCreneau = creneau ? new Date(creneau.fin).getTime() : null
 
   return (
-    <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
+    <section className="verre verre-verdict p-4 sm:p-5">
       {/* Sélecteur de jour */}
       <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Jour">
         {jours.map((jour) => {
@@ -92,7 +92,9 @@ export function Timeline({
                 onSelectionnerHeure(null)
               }}
               className={`flex shrink-0 flex-col items-center gap-1.5 rounded-xl border px-3 py-2 transition-colors ${
-                actif ? 'border-foam/40 bg-raised' : 'border-line/60 hover:bg-raised/60'
+                actif
+                  ? 'border-transparent bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.14)]'
+                  : 'border-transparent hover:bg-white/5'
               }`}
             >
               <span className={`font-mono text-[11px] ${actif ? 'text-foam' : 'text-muted'}`}>
@@ -175,10 +177,10 @@ export function Timeline({
                 transition={{ duration: 0.18 }}
                 className={`flex w-[3.1rem] shrink-0 flex-col items-center gap-2 rounded-xl border px-1 py-2.5 transition-colors ${
                   selectionnee
-                    ? 'border-foam/50 bg-raised'
+                    ? 'border-transparent bg-white/12 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.16)]'
                     : dansCreneau
-                      ? 'border-transparent bg-go/10'
-                      : 'border-transparent hover:bg-raised/60'
+                      ? 'border-transparent bg-white/[0.055]'
+                      : 'border-transparent hover:bg-white/5'
                 } ${nuit ? 'opacity-40' : ''}`}
               >
                 <span className="tabular font-mono text-[10px] text-muted">

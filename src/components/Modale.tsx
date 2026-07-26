@@ -26,7 +26,7 @@ export function Modale({ titre, onFermer, children }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-abyss/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-abyss/55 p-0 backdrop-blur-md sm:items-center sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onFermer()
       }}
@@ -37,9 +37,9 @@ export function Modale({ titre, onFermer, children }: Props) {
         aria-modal="true"
         aria-label={titre}
         tabIndex={-1}
-        className="monte flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-deep sm:rounded-2xl"
+        className="verre monte flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-b-none sm:rounded-b-[var(--rayon-l)]"
       >
-        <header className="flex items-center justify-between border-b border-line/70 px-5 py-4">
+        <header className="flex items-center justify-between border-b border-white/8 px-5 py-4">
           <h2 className="font-mono text-[11px] tracking-[0.22em] text-muted">{titre.toUpperCase()}</h2>
           <button
             type="button"

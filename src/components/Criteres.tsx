@@ -16,7 +16,7 @@ export function Criteres({ criteres }: Props) {
   const [ouvert, setOuvert] = useState<string | null>(null)
 
   return (
-    <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
+    <section className="verre p-4 sm:p-5">
       <h3 className="mb-4 font-mono text-[11px] tracking-[0.22em] text-muted">DÉTAIL DU CALCUL</h3>
 
       <ul className="space-y-1">
@@ -28,7 +28,7 @@ export function Criteres({ criteres }: Props) {
                 type="button"
                 onClick={() => setOuvert(estOuvert ? null : c.cle)}
                 aria-expanded={estOuvert}
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-raised/60"
+                className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-white/5"
               >
                 <span className="w-[6.5rem] shrink-0 text-[13px] text-foam/90">{c.label}</span>
 

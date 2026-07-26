@@ -38,6 +38,66 @@
   color-scheme: dark;
   /* Teinte ambiante pilotée par le verdict, mise à jour depuis React */
   --verdict: var(--color-go);
+
+  /* Rayons continus : plus on est grand, plus la courbe est ample */
+  --rayon-s: 12px;
+  --rayon-m: 18px;
+  --rayon-l: 26px;
+  --rayon-xl: 34px;
+}
+
+/**
+ * Matériau « verre ».
+ *
+ * Inspiré du Liquid Glass d'Apple : la translucidité seule ne suffit pas, ce
+ * qui fait le matériau c'est la saturation de ce qu'il y a derrière, une arête
+ * spéculaire sur le bord supérieur — là où la lumière accroche — et une
+ * profondeur portée par la superposition plutôt que par une ombre franche.
+ *
+ * Le flou reste réservé aux grandes surfaces (chrome, cartes, modale) :
+ * appliqué à chaque petit élément, il coûte cher en composition.
+ */
+.verre {
+  position: relative;
+  background: color-mix(in oklab, var(--color-surface) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border-radius: var(--rayon-l);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.1),
+    inset 0 0 0 1px rgb(255 255 255 / 0.045),
+    0 10px 34px -12px rgb(0 0 0 / 0.55);
+}
+
+/* Variante légère pour la chrome flottante */
+.verre-leger {
+  background: color-mix(in oklab, var(--color-deep) 62%, transparent);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border-radius: var(--rayon-xl);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+    inset 0 0 0 1px rgb(255 255 255 / 0.05),
+    0 8px 28px -14px rgb(0 0 0 / 0.6);
+}
+
+/* Le verre prend une nuance de la couleur du verdict, très légèrement */
+.verre-verdict {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--verdict) 7%, transparent),
+      transparent 55%
+    ),
+    color-mix(in oklab, var(--color-surface) 55%, transparent);
+  transition: background 800ms ease;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .verre,
+  .verre-leger {
+    background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+  }
 }
 
 html,

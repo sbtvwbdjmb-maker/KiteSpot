@@ -228,7 +228,8 @@ export default function App() {
       )}
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 py-4">
+        {/* Chrome flottante : elle passe au-dessus du contenu et prend sa teinte */}
+        <header className="verre-leger sticky top-3 z-30 mt-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
           <span className="font-display text-[15px] font-bold tracking-tight text-foam">
             Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
           </span>
@@ -241,7 +242,7 @@ export default function App() {
                 type="button"
                 onClick={() => setMenuProfilOuvert((o) => !o)}
                 aria-expanded={menuProfilOuvert}
-                className="flex items-center gap-1.5 rounded-full border border-line bg-surface/50 px-3 py-1.5 text-[12px] text-muted transition-colors hover:text-foam"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
               >
                 <span aria-hidden>👤</span>
                 {profilActif.nom}
@@ -262,7 +263,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setModale('lieu')}
-              className="rounded-full border border-line bg-surface/50 px-3 py-1.5 text-[12px] text-muted transition-colors hover:text-foam"
+              className="rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
             >
               Changer de spot
             </button>
