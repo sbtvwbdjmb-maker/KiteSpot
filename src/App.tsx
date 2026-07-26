@@ -7,6 +7,7 @@ import { useProfils } from './hooks/useProfils'
 import { useLocalStorage } from './hooks/useLocalStorage'
 import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
+import { useDefilement } from './hooks/useDefilement'
 import { distanceKm, formaterDistance } from './lib/geo'
 import { analyserPourSport, type Sport } from './lib/sport'
 import { couleurScore } from './lib/couleurs'
@@ -51,6 +52,7 @@ export default function App() {
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
 
   const { localiser, permission: permissionGeoloc } = useGeolocation()
+  const barreRetractee = useDefilement()
   const { meteo, marine, chargement, erreur, misAJourLe, rafraichir } = useConditions(lieu)
   const fraicheur = useFraicheur(misAJourLe)
 
@@ -228,9 +230,20 @@ export default function App() {
       )}
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
-        {/* Chrome flottante : elle passe au-dessus du contenu et prend sa teinte */}
-        <header className="verre-leger sticky top-3 z-30 mt-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
-          <span className="font-display text-[15px] font-bold tracking-tight text-foam">
+        {/* Chrome flottante : ample en haut de page, elle se resserre au
+            défilement pour rendre la place au contenu, sans jamais disparaître
+            puisqu'elle porte la bascule Kite/Surf. */}
+        <header
+          data-retractee={barreRetractee}
+          className={`verre-leger barre-flottante sticky top-3 z-30 mt-3 flex flex-wrap items-center justify-between gap-3 px-4 ${
+            barreRetractee ? 'py-1.5' : 'py-2.5'
+          }`}
+        >
+          <span
+            className={`font-display font-bold tracking-tight text-foam transition-all duration-300 ${
+              barreRetractee ? 'text-[13px]' : 'text-[15px]'
+            }`}
+          >
             Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
           </span>
 

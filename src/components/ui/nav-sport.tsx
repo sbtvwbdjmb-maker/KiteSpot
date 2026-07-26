@@ -1,9 +1,8 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Waves, Wind } from 'lucide-react'
 import { SPORTS, type Sport } from '@/lib/sport'
 
-const ICONE_SPORT = { kite: Wind, surf: Waves } as const
+const EMOJI_SPORT = { kite: '\ud83e\ude81', surf: '\ud83c\udfc4' } as const
 
 interface Props {
   actif: Sport
@@ -48,10 +47,7 @@ export function NavSport({ actif, onChanger, className }: Props) {
                 estActif ? 'text-foam' : 'text-muted',
               )}
             >
-              {(() => {
-                const Icone = ICONE_SPORT[sport.id]
-                return <Icone aria-hidden strokeWidth={1.5} className="h-[15px] w-[15px]" />
-              })()}
+              <span aria-hidden>{EMOJI_SPORT[sport.id]}</span>
               {sport.label}
             </span>
           </button>

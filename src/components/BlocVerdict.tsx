@@ -5,7 +5,6 @@ import type { Lieu } from '../types/lieu'
 import { CadranVent } from './CadranVent'
 import { analyserDirection } from '../lib/direction'
 import { Pictogramme } from '@/components/ui/pictogramme'
-import { TriangleAlert } from 'lucide-react'
 
 interface Props {
   lieu: Lieu
@@ -157,11 +156,7 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
         <ul className="mt-8 space-y-2.5 border-l border-line/70 pl-4">
           {analyse.alertes.map((alerte) => (
             <li key={alerte} className="flex gap-2.5 text-[13px] leading-snug text-muted">
-              <TriangleAlert
-                aria-hidden
-                strokeWidth={1.5}
-                className="mt-px h-[15px] w-[15px] shrink-0 text-warn"
-              />
+              <span aria-hidden className="shrink-0 text-warn">▲</span>
               {alerte}
             </li>
           ))}
