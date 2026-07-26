@@ -61,7 +61,7 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
 
       <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_17rem]">
         <div>
-          <p className="font-mono text-[11px] tracking-[0.28em] text-muted">
+          <p className="lisible-media-fort font-mono text-[11px] tracking-[0.28em] text-foam">
             VERDICT {analyse.sport === 'kite' ? 'KITE' : 'SURF'}
           </p>
 
@@ -85,15 +85,15 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
               >
                 {analyse.verdict.titre}
               </motion.h2>
-              <p className="lisible-media mt-1 text-[14px] font-medium text-foam">
+              <p className="lisible-media-fort mt-1 text-[14px] font-medium text-foam">
                 {analyse.verdict.sousTitre}
               </p>
 
-              <div className="mt-5 flex items-baseline gap-3">
+              <div className="lisible-media-fort mt-5 flex items-baseline gap-3">
                 <span className="tabular font-mono text-4xl font-medium text-foam">
                   {score.toFixed(1)}
                 </span>
-                <span className="font-mono text-sm text-dim">/ 10</span>
+                <span className="font-mono text-sm font-medium text-foam">/ 10</span>
                 <div className="ml-1 h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
                   <div
                     className="h-full rounded-full transition-[width] duration-700 ease-out"
@@ -108,7 +108,7 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
             <motion.dl
               {...anim}
               transition={{ duration: 0.5, delay: 0.18 }}
-              className="lisible-media mt-7 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4"
+              className="lisible-media-fort mt-7 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4"
             >
               {analyse.lectures.map((lecture) => {
                 // Un jugement se lit en toutes lettres : on le compose en
@@ -128,11 +128,13 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
                         {lecture.valeur}
                       </span>
                       {!estJugement && (
-                        <span className="ml-1 font-mono text-[11px] text-muted">{lecture.unite}</span>
+                        <span className="ml-1 font-mono text-[12px] font-medium text-foam">
+                          {lecture.unite}
+                        </span>
                       )}
                     </dd>
                     {/* Sous le jugement, la mesure qui l'a produit reste lisible */}
-                    <dt className="mt-0.5 truncate font-mono text-[10px] text-muted">
+                    <dt className="mt-0.5 truncate font-mono text-[12px] font-medium text-foam">
                       {estJugement ? (lecture.detail ?? lecture.unite) : lecture.detail}
                     </dt>
                   </div>
@@ -150,12 +152,13 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
             rafalesNoeuds={rafalesNoeuds}
             analyse={directionVent}
             directionHouleDeg={analyse.directionHouleDeg}
+            sport={analyse.sport}
           />
         </div>
       </div>
 
       {analyse.alertes.length > 0 && (
-        <ul className="lisible-media mt-8 space-y-2.5 border-l border-line/70 pl-4">
+        <ul className="lisible-media-fort mt-8 space-y-2.5 border-l border-line/70 pl-4">
           {analyse.alertes.map((alerte) => (
             <li key={alerte} className="flex gap-2.5 text-[13px] font-medium leading-snug text-foam">
               <span aria-hidden className="shrink-0 text-warn">▲</span>

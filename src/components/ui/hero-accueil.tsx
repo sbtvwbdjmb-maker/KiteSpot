@@ -68,11 +68,13 @@ export function HeroAccueil({
         transition={RESSORT}
         className="mx-auto flex max-w-2xl flex-col items-center px-2 text-center"
       >
-        <h1 className="font-display text-[clamp(1.9rem,6vw,3.2rem)] leading-[1.05] font-bold tracking-tight text-foam">
+        <h1 className="lisible-media font-display text-[clamp(1.9rem,6vw,3.2rem)] leading-[1.05] font-bold tracking-tight text-foam">
           {titre}
         </h1>
 
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-muted">{sousTitre}</p>
+        <p className="lisible-media mt-4 max-w-md text-[15px] leading-relaxed font-medium text-foam">
+          {sousTitre}
+        </p>
 
         {(actionPrincipale || actionSecondaire) && (
           <motion.div
@@ -111,7 +113,7 @@ export function HeroAccueil({
           <motion.p
             {...anim}
             transition={{ ...RESSORT, delay: 0.2 }}
-            className="mt-5 text-[13px] text-dim"
+            className="lisible-media mt-5 text-[13px] font-medium text-foam"
           >
             {note}
           </motion.p>
@@ -120,7 +122,9 @@ export function HeroAccueil({
 
       {favoris.length > 0 && (
         <motion.div {...anim} transition={{ ...RESSORT, delay: 0.24 }} className="mt-14">
-          <p className="mb-3 px-2 font-mono text-[10px] tracking-[0.22em] text-dim">MES SPOTS FAVORIS</p>
+          <p className="lisible-media-fort mb-3 px-2 font-mono text-[11px] font-medium tracking-[0.22em] text-foam">
+            MES SPOTS FAVORIS
+          </p>
 
           <CarrouselDefilant>
             {favoris.map((favori) => (
@@ -128,7 +132,7 @@ export function HeroAccueil({
                 key={favori.id}
                 whileHover={reduit ? undefined : { y: -4 }}
                 transition={{ duration: 0.25 }}
-                className="group relative flex w-[13.5rem] shrink-0 flex-col justify-between rounded-2xl border border-line/70 bg-surface/40 p-4 text-left transition-colors hover:border-foam/30 hover:bg-surface/70"
+                className="verre verre-dense group relative flex w-[13.5rem] shrink-0 flex-col justify-between rounded-2xl border border-line/70 p-4 text-left transition-colors hover:border-foam/30"
                 style={{ minHeight: '8.5rem' }}
               >
                 <button
@@ -139,11 +143,11 @@ export function HeroAccueil({
                   <h3 className="pr-7 font-display text-[15px] leading-tight font-semibold text-foam">
                     {favori.nom}
                   </h3>
-                  <p className="mt-1 text-[12px] text-dim">
+                  <p className="mt-1 text-[13px] text-muted">
                     {[favori.localite, favori.pays].filter(Boolean).join(' · ')}
                   </p>
                 </button>
-                <span className="mt-4 font-mono text-[10px] tracking-wide text-muted">
+                <span className="mt-4 font-mono text-[11px] font-medium tracking-wide text-muted">
                   {favori.type?.length ? favori.type.join(' · ') : 'lieu liké'}
                 </span>
                 <button
@@ -163,7 +167,7 @@ export function HeroAccueil({
 
       {spots.length > 0 && (
         <motion.div {...anim} transition={{ ...RESSORT, delay: 0.28 }} className="mt-14">
-          <p className="mb-3 px-2 font-mono text-[10px] tracking-[0.22em] text-dim">
+          <p className="lisible-media-fort mb-3 px-2 font-mono text-[11px] font-medium tracking-[0.22em] text-foam">
             SPOTS VÉRIFIÉS · LES PLUS DISCRETS D’ABORD
           </p>
 
@@ -175,24 +179,24 @@ export function HeroAccueil({
                 onClick={() => onChoisirSpot?.(spot)}
                 whileHover={reduit ? undefined : { y: -4 }}
                 transition={{ duration: 0.25 }}
-                className="group flex w-[13.5rem] shrink-0 flex-col justify-between rounded-2xl border border-line/70 bg-surface/40 p-4 text-left transition-colors hover:border-foam/30 hover:bg-surface/70"
+                className="verre verre-dense group flex w-[13.5rem] shrink-0 flex-col justify-between rounded-2xl border border-line/70 p-4 text-left transition-colors hover:border-foam/30"
                 style={{ minHeight: '8.5rem' }}
               >
                 <div>
                   <h3 className="font-display text-[15px] leading-tight font-semibold text-foam">
                     {spot.name}
                   </h3>
-                  <p className="mt-1 text-[12px] text-dim">
+                  <p className="mt-1 text-[13px] text-muted">
                     {spot.locality} · {spot.country}
                   </p>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="font-mono text-[10px] tracking-wide text-muted">
+                  <span className="font-mono text-[11px] font-medium tracking-wide text-muted">
                     {spot.type.join(' · ')}
                   </span>
                   {/* Discrétion du spot : 1 point = confidentiel, 5 = ultra connu */}
-                  <span className="font-mono text-[10px] text-dim" title={`Popularité ${spot.popularite}/5`}>
+                  <span className="font-mono text-[11px] text-muted" title={`Popularité ${spot.popularite}/5`}>
                     {'●'.repeat(spot.popularite)}
                     <span className="opacity-30">{'●'.repeat(5 - spot.popularite)}</span>
                   </span>

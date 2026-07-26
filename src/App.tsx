@@ -321,8 +321,10 @@ export default function App() {
 
         {lieu ? (
           <main className="flex flex-1 flex-col gap-8 pt-2">
-            <div className="monte">
-              <p className="font-mono text-[11px] tracking-[0.2em] text-muted">SPOT SÉLECTIONNÉ</p>
+            <div className="lisible-media monte">
+              <p className="lisible-media-fort font-mono text-[11px] tracking-[0.2em] text-foam">
+                SPOT SÉLECTIONNÉ
+              </p>
               <div className="mt-1.5 flex items-start gap-3">
                 <h1 className="font-display text-[clamp(1.5rem,4.5vw,2.1rem)] leading-tight font-bold text-foam">
                   {lieu.nom}
@@ -342,7 +344,7 @@ export default function App() {
                   {estFavori(lieu.id) ? '♥' : '♡'}
                 </button>
               </div>
-              <p className="mt-1 text-[13px] text-muted">
+              <p className="lisible-media-fort mt-1 text-[13px] font-medium text-foam">
                 {[lieu.localite, lieu.pays].filter(Boolean).join(' · ')}
                 {distanceLieu !== undefined && ` · à ${formaterDistance(distanceLieu)}`}
               </p>
@@ -392,8 +394,8 @@ export default function App() {
                 {analyse.criteres.length > 0 && <Criteres criteres={analyse.criteres} />}
 
                 {lieu.acces && (
-                  <section className="border-t border-line/60 pt-6">
-                    <h3 className="mb-4 font-mono text-[11px] tracking-[0.22em] text-muted">LE SPOT</h3>
+                  <section className="lisible-media-fort border-t border-line/60 pt-6">
+                    <h3 className="mb-4 font-mono text-[11px] tracking-[0.22em] text-foam">LE SPOT</h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       {lieu.type && <Info label="Type d’eau" valeur={lieu.type.join(', ')} />}
                       {lieu.niveau && <Info label="Niveau requis" valeur={lieu.niveau} />}
@@ -492,8 +494,8 @@ export default function App() {
 function Info({ label, valeur }: { label: string; valeur: string }) {
   return (
     <div>
-      <p className="font-mono text-[10px] tracking-[0.16em] text-dim">{label.toUpperCase()}</p>
-      <p className="mt-1 text-[13px] leading-snug text-foam/85">{valeur}</p>
+      <p className="font-mono text-[11px] tracking-[0.16em] text-muted">{label.toUpperCase()}</p>
+      <p className="mt-1 text-[13px] leading-snug text-foam">{valeur}</p>
     </div>
   )
 }

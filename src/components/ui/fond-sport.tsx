@@ -91,9 +91,6 @@ export function FondSport({ sport }: Props) {
             preload="auto"
           />
         )}
-        {/* Voile clair en haut : éclaircit la bande où se lit le verdict, en
-            fondu total (pas de bord), sans toucher le bas de l'image. */}
-        <div className="fond-voile" />
       </div>
     </div>
   )

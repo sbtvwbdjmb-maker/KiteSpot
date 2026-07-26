@@ -31,14 +31,14 @@ export function Provenance({
   const ajustable = lieu.sourceOrientation === 'estimee' || lieu.sourceOrientation === 'manuelle' || lieu.sourceOrientation === 'inconnue'
 
   return (
-    <section className="border-t border-line/60 pt-6">
+    <section className="lisible-media-fort border-t border-line/60 pt-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-mono text-[11px] tracking-[0.22em] text-muted">SOURCES</h3>
+        <h3 className="font-mono text-[11px] tracking-[0.22em] text-foam">SOURCES</h3>
         <button
           type="button"
           onClick={onRafraichir}
           disabled={chargement}
-          className="font-mono text-[11px] text-dim transition-colors hover:text-foam disabled:opacity-50"
+          className="font-mono text-[11px] text-muted transition-colors hover:text-foam disabled:opacity-50"
         >
           {chargement ? 'actualisation…' : '↻ actualiser'}
         </button>
@@ -99,7 +99,7 @@ export function Provenance({
       </div>
 
       {fraicheur && (
-        <p className="tabular mt-4 font-mono text-[11px] text-dim/70">Mis à jour {fraicheur}</p>
+        <p className="tabular mt-4 font-mono text-[11px] text-muted">Mis à jour {fraicheur}</p>
       )}
     </section>
   )
@@ -108,8 +108,8 @@ export function Provenance({
 function Ligne({ titre, detail }: { titre: string; detail: string }) {
   return (
     <div>
-      <dt className="font-mono text-[11px] text-foam/70">{titre}</dt>
-      <dd className="text-dim">{detail}</dd>
+      <dt className="font-mono text-[11px] font-medium text-foam">{titre}</dt>
+      <dd className="text-muted">{detail}</dd>
     </div>
   )
 }

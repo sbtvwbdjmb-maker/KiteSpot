@@ -88,6 +88,19 @@
     0 12px 34px -18px rgb(22 40 54 / 0.3);
 }
 
+/**
+ * Verre dense : même matériau, mais nettement plus couvrant. Réservé aux cartes
+ * posées à même la photo de fond (le carrousel de spots de l'accueil), où le
+ * verre standard laisse trop passer l'image et noie le texte.
+ */
+.verre-dense {
+  background: color-mix(in oklab, var(--color-surface) 90%, transparent);
+}
+
+.verre-dense:hover {
+  background: var(--color-surface);
+}
+
 /* Le verre prend une nuance de la couleur du verdict, très légèrement */
 .verre-verdict {
   background:
@@ -226,45 +239,6 @@ body {
   }
 }
 
-/**
- * Voile clair posé sur le haut du fond média : il éclaircit la bande où se lit
- * le verdict pour que l'encre foncée ressorte, même sur une photo chaude et
- * chargée (coucher de soleil). Dégradé vertical, franc en haut, éteint vers le
- * milieu — aucune arête, ce n'est pas une carte mais une brume de jour.
- */
-.fond-voile {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--color-abyss) 74%, transparent) 0%,
-    color-mix(in oklab, var(--color-abyss) 46%, transparent) 26%,
-    color-mix(in oklab, var(--color-abyss) 18%, transparent) 46%,
-    transparent 64%
-  );
-}
-
-/**
- * Sur mobile, la page est bien plus haute que large : tout le bloc verdict
- * (jusqu'aux dernières lectures et au cadran) tombe plus bas, sur la partie
- * sombre de la photo. On tient donc le voile clair plus fort et plus longtemps
- * pour que l'encre reste lisible partout au-dessus de la première charnière.
- */
-@media (max-width: 640px) {
-  .fond-voile {
-    background: linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--color-abyss) 82%, transparent) 0%,
-      color-mix(in oklab, var(--color-abyss) 70%, transparent) 30%,
-      color-mix(in oklab, var(--color-abyss) 58%, transparent) 55%,
-      color-mix(in oklab, var(--color-abyss) 40%, transparent) 78%,
-      color-mix(in oklab, var(--color-abyss) 16%, transparent) 92%,
-      transparent 100%
-    );
-  }
-}
-
 /* Crossfade à l'entrée quand on bascule Kite / Surf */
 @keyframes fondApparait {
   from {
@@ -294,8 +268,37 @@ body {
 .lisible-media {
   text-shadow:
     0 1px 2px rgb(255 255 255 / 0.9),
-    0 0 6px rgb(255 255 255 / 0.85),
-    0 0 14px rgb(255 255 255 / 0.6);
+    0 0 8px rgb(255 255 255 / 0.8),
+    0 0 16px rgb(255 255 255 / 0.55);
+}
+
+/**
+ * Variante serrée, pour les petites étiquettes en chasse fixe (« rafales 23 »,
+ * « side-onshore », « estimation ») : elles sont trop fines pour tenir sur une
+ * photo avec le seul halo diffus. On ajoute deux passes très courtes qui
+ * cernent chaque lettre.
+ *
+ * Réservée au petit texte : sur un grand titre, ces passes mordraient le tracé
+ * et le feraient paraître gris au lieu d'encre franche.
+ */
+.lisible-media-fort {
+  /* Liseré blanc sur tout le pourtour de la lettre, puis un halo diffus. C'est
+     lui qui permet à l'encre de tenir même posée sur la voile d'un kite ou sur
+     l'eau sombre, là où la couleur seule échoue.
+     Les passes ne sont pas tout à fait opaques — assez pour détacher la lettre,
+     trop peu pour la détourer comme un autocollant : le texte reste posé dans
+     l'image plutôt que collé dessus. */
+  text-shadow:
+    1px 0 0 rgb(255 255 255 / 0.6),
+    -1px 0 0 rgb(255 255 255 / 0.6),
+    0 1px 0 rgb(255 255 255 / 0.6),
+    0 -1px 0 rgb(255 255 255 / 0.6),
+    1px 1px 0 rgb(255 255 255 / 0.42),
+    -1px 1px 0 rgb(255 255 255 / 0.42),
+    1px -1px 0 rgb(255 255 255 / 0.42),
+    -1px -1px 0 rgb(255 255 255 / 0.42),
+    0 0 5px rgb(255 255 255 / 0.7),
+    0 0 13px rgb(255 255 255 / 0.5);
 }
 
 /**

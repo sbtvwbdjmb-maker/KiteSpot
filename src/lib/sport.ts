@@ -104,7 +104,20 @@ export function analyserPourSport(
           unite: 'm²',
           detail: a.voile.tailleRetenue ? 'dans ton quiver' : 'estimation',
         },
-        { icone: 'temperature', valeur: `${Math.round(meteoHoraire.temperatureC)}°`, unite: 'air' },
+        {
+          icone: 'temperature',
+          // L'eau compte plus que l'air pour juger de la combinaison à sortir ;
+          // on la préfère quand le modèle marin couvre le spot, l'air en secours.
+          valeur:
+            marine.temperatureEauC !== null
+              ? `${Math.round(marine.temperatureEauC)}°`
+              : `${Math.round(meteoHoraire.temperatureC)}°`,
+          unite: '',
+          detail:
+            marine.temperatureEauC !== null
+              ? `eau · air ${Math.round(meteoHoraire.temperatureC)}°`
+              : 'air',
+        },
       ],
     }
   }
