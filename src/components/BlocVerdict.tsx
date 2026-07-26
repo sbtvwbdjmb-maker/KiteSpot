@@ -128,11 +128,11 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
                         {lecture.valeur}
                       </span>
                       {!estJugement && (
-                        <span className="ml-1 font-mono text-[11px] text-foam/70">{lecture.unite}</span>
+                        <span className="ml-1 font-mono text-[11px] text-muted">{lecture.unite}</span>
                       )}
                     </dd>
                     {/* Sous le jugement, la mesure qui l'a produit reste lisible */}
-                    <dt className="mt-0.5 truncate font-mono text-[10px] text-foam/70">
+                    <dt className="mt-0.5 truncate font-mono text-[10px] text-muted">
                       {estJugement ? (lecture.detail ?? lecture.unite) : lecture.detail}
                     </dt>
                   </div>
