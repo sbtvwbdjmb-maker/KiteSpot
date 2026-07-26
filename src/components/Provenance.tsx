@@ -49,7 +49,7 @@ export function Provenance({
           titre="Modélisé — Open-Meteo"
           detail={`Vent moyen, rafales, direction, température, précipitations, nuages, soleil.${
             eauDisponible ? ' Houle et température de l’eau via son API marine.' : ''
-          } Ce sont des sorties de modèles météo (AROME de Météo-France sur la France, ECMWF ou GFS ailleurs), pas des relevés d’une station posée sur la plage.`}
+          } Ce sont des sorties de modèles météo Météo-France (AROME, ~1,3 km sur la France ; ARPEGE, ~10 km ailleurs), pas des relevés d’une station posée sur la plage.`}
         />
         {!eauDisponible && (
           <Ligne titre="Température de l’eau" detail="Non couverte sur ce plan d’eau : rien n’est affiché." />

@@ -71,10 +71,17 @@ export async function fetchMeteo(lat: number, lon: number): Promise<MeteoSpot> {
   url.searchParams.set('forecast_days', '7')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
-  // Le rider est sur l'eau : on force la maille au-dessus de la mer plutôt que
-  // la cellule terrestre par défaut. Moins de rugosité = vent moyen plus réaliste
-  // et facteur de rafales plus juste pour un spot côtier.
-  url.searchParams.set('cell_selection', 'sea')
+  // `best_match` d'Open-Meteo est une sélection opaque qui peut mélanger
+  // plusieurs fournisseurs (AROME, ICON, GFS, ECMWF) selon le point demandé,
+  // avec des sauts de modèle imprévisibles d'un appel à l'autre. On fixe
+  // explicitement la chaîne Météo-France (ARPEGE → AROME → AROME HD, la plus
+  // fine disponible étant choisie automatiquement) : c'est le modèle de
+  // référence pour le vent côtier français, celui que la plupart des riders
+  // comparent sur Windguru, et un choix stable plutôt qu'un blend variable.
+  // `cell_selection=sea` a été retiré : mesuré sur les spots français de la
+  // base, il fait parfois basculer vers une maille bien plus grossière sans
+  // bénéfice fiable ; la maille par défaut est déjà cohérente avec la côte.
+  url.searchParams.set('models', 'meteofrance_seamless')
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error('Open-Meteo a refusé la requête météo')
@@ -134,8 +141,8 @@ export async function fetchVentActuel(lat: number, lon: number): Promise<VentAct
   url.searchParams.set('current', 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
-  // Cohérent avec fetchMeteo : vent au-dessus de l'eau pour les vignettes de spots.
-  url.searchParams.set('cell_selection', 'sea')
+  // Cohérent avec fetchMeteo : même chaîne Météo-France explicite pour les vignettes de spots.
+  url.searchParams.set('models', 'meteofrance_seamless')
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error('Open-Meteo a refusé la requête vent')
