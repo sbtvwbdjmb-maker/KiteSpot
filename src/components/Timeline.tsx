@@ -93,8 +93,8 @@ export function Timeline({
               }}
               className={`flex shrink-0 flex-col items-center gap-1.5 rounded-xl border px-3 py-2 transition-colors ${
                 actif
-                  ? 'border-transparent bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.14)]'
-                  : 'border-transparent hover:bg-white/5'
+                  ? 'border-transparent bg-foam/[0.07] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6)]'
+                  : 'border-transparent hover:bg-foam/[0.05]'
               }`}
             >
               <span className={`font-mono text-[11px] ${actif ? 'text-foam' : 'text-muted'}`}>
@@ -177,10 +177,10 @@ export function Timeline({
                 transition={{ duration: 0.18 }}
                 className={`flex w-[3.1rem] shrink-0 flex-col items-center gap-2 rounded-xl border px-1 py-2.5 transition-colors ${
                   selectionnee
-                    ? 'border-transparent bg-white/12 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.16)]'
+                    ? 'border-transparent bg-foam/[0.08] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6)]'
                     : dansCreneau
-                      ? 'border-transparent bg-white/[0.055]'
-                      : 'border-transparent hover:bg-white/5'
+                      ? 'border-transparent bg-foam/[0.045]'
+                      : 'border-transparent hover:bg-foam/[0.05]'
                 } ${nuit ? 'opacity-40' : ''}`}
               >
                 <span className="tabular font-mono text-[10px] text-muted">

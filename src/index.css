@@ -2,32 +2,34 @@
 
 /* ---------------------------------------------------------------------------
    KiteSpot — système de tokens
-   Direction : carte marine de nuit. Bleu d'encre plutôt que noir, papier
-   chaud pour le texte, et des accents empruntés aux pavillons de
-   signalisation — sourds et lavés, jamais fluorescents.
+   Direction : plein jour sur l'eau. Un ciel clair et laiteux, une mer d'un
+   bleu doux, du texte encre profonde pour la lisibilité, et des accents
+   empruntés aux pavillons de signalisation — francs mais jamais criards.
+   Le matériau verre s'inspire du Liquid Glass d'Apple : translucide, saturé,
+   avec une arête spéculaire là où la lumière accroche.
    --------------------------------------------------------------------------- */
 @theme {
-  /* Bleus d'encre : franchement bleus, pas noir-vert */
-  --color-abyss: #0b1622;
-  --color-deep: #12202f;
-  --color-surface: #1a2a3b;
-  --color-raised: #24384c;
-  --color-line: #33495f;
+  /* Fonds clairs : du ciel presque blanc à l'eau bleutée */
+  --color-abyss: #eef4f9;
+  --color-deep: #e2edf4;
+  --color-surface: #ffffff;
+  --color-raised: #f3f8fc;
+  --color-line: #d3e0ea;
 
-  /* Texte : blanc cassé chaud, pas blanc glacé. C'est ce qui réchauffe l'écran. */
-  --color-foam: #eee9df;
-  --color-muted: #a3aab0;
-  --color-dim: #737f8c;
+  /* Texte : encre marine profonde, chaleureuse, jamais noir pur */
+  --color-foam: #162836;
+  --color-muted: #566773;
+  --color-dim: #8497a3;
 
-  /* Verdict — pigments de pavillon, désaturés. Aucun néon. */
-  --color-go: #5aa87b;
-  --color-warn: #d9a441;
-  --color-orange: #c9743f;
-  --color-stop: #b8514a;
+  /* Verdict — pigments de pavillon, tenus pour rester lisibles sur clair */
+  --color-go: #2f9e63;
+  --color-warn: #c78a1c;
+  --color-orange: #c26a34;
+  --color-stop: #c0433c;
 
-  /* Terre / mer du cadran : la terre reste sourde, c'est un repère, pas un sujet */
-  --color-land: #22301f;
-  --color-sea: #12293c;
+  /* Terre / mer du cadran (repères, pas des sujets) */
+  --color-land: #b9c79a;
+  --color-sea: #8ec9de;
 
   --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
@@ -35,7 +37,7 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   /* Teinte ambiante pilotée par le verdict, mise à jour depuis React */
   --verdict: var(--color-go);
 
@@ -44,41 +46,46 @@
   --rayon-m: 18px;
   --rayon-l: 26px;
   --rayon-xl: 34px;
+
+  /* Surincrustations d'interaction, pensées pour un fond clair : de l'encre
+     translucide plutôt que du blanc, qui disparaîtrait ici. */
+  --survol: color-mix(in oklab, var(--color-foam) 5%, transparent);
+  --actif-doux: color-mix(in oklab, var(--color-foam) 8%, transparent);
+  --actif-fort: color-mix(in oklab, var(--color-foam) 11%, transparent);
+  --hairline: color-mix(in oklab, var(--color-foam) 8%, transparent);
 }
 
 /**
- * Matériau « verre ».
+ * Matériau « verre » clair.
  *
- * Inspiré du Liquid Glass d'Apple : la translucidité seule ne suffit pas, ce
- * qui fait le matériau c'est la saturation de ce qu'il y a derrière, une arête
- * spéculaire sur le bord supérieur — là où la lumière accroche — et une
- * profondeur portée par la superposition plutôt que par une ombre franche.
- *
- * Le flou reste réservé aux grandes surfaces (chrome, cartes, modale) :
- * appliqué à chaque petit élément, il coûte cher en composition.
+ * Sur fond clair, le verre est une plaque de glace dépolie : un fond blanc
+ * translucide fortement saturé de ce qu'il y a derrière, une arête de lumière
+ * sur le bord supérieur, un liseré d'encre très fin pour détacher la forme, et
+ * une ombre portée douce qui donne la profondeur. Le flou reste réservé aux
+ * grandes surfaces (chrome, cartes, modale).
  */
 .verre {
   position: relative;
-  background: color-mix(in oklab, var(--color-surface) 55%, transparent);
-  backdrop-filter: blur(20px) saturate(170%);
-  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  background: color-mix(in oklab, var(--color-surface) 64%, transparent);
+  backdrop-filter: blur(20px) saturate(155%);
+  -webkit-backdrop-filter: blur(20px) saturate(155%);
   border-radius: var(--rayon-l);
   box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.1),
-    inset 0 0 0 1px rgb(255 255 255 / 0.045),
-    0 10px 34px -12px rgb(0 0 0 / 0.55);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.8),
+    inset 0 0 0 1px rgb(22 40 54 / 0.05),
+    0 14px 40px -18px rgb(22 40 54 / 0.28);
 }
 
 /* Variante légère pour la chrome flottante */
 .verre-leger {
-  background: color-mix(in oklab, var(--color-deep) 62%, transparent);
-  backdrop-filter: blur(26px) saturate(180%);
-  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  background: color-mix(in oklab, var(--color-surface) 60%, transparent);
+  backdrop-filter: blur(26px) saturate(165%);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
   border-radius: var(--rayon-xl);
   box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.12),
-    inset 0 0 0 1px rgb(255 255 255 / 0.05),
-    0 8px 28px -14px rgb(0 0 0 / 0.6);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.85),
+    inset 0 0 0 1px rgb(22 40 54 / 0.055),
+    0 12px 34px -18px rgb(22 40 54 / 0.3);
 }
 
 /* Le verre prend une nuance de la couleur du verdict, très légèrement */
@@ -86,10 +93,10 @@
   background:
     linear-gradient(
       180deg,
-      color-mix(in oklab, var(--verdict) 7%, transparent),
+      color-mix(in oklab, var(--verdict) 10%, transparent),
       transparent 55%
     ),
-    color-mix(in oklab, var(--color-surface) 55%, transparent);
+    color-mix(in oklab, var(--color-surface) 64%, transparent);
   transition: background 800ms ease;
 }
 
@@ -113,9 +120,9 @@
   max-width: 34rem;
   border-radius: 999px;
   box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.14),
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 12px 30px -14px rgb(0 0 0 / 0.7);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+    inset 0 0 0 1px rgb(22 40 54 / 0.06),
+    0 16px 34px -18px rgb(22 40 54 / 0.32);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -127,7 +134,7 @@
 @supports not (backdrop-filter: blur(1px)) {
   .verre,
   .verre-leger {
-    background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+    background: color-mix(in oklab, var(--color-surface) 94%, transparent);
   }
 }
 
@@ -139,7 +146,12 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-abyss);
+  /* Ciel de secours, toujours présent même sans la scène WebGL (écran de
+     création de profil, accueil). La scène three.js vient par-dessus. */
+  background:
+    radial-gradient(120% 90% at 78% -10%, #fbfdff 0%, transparent 46%),
+    linear-gradient(180deg, #f0f7fb 0%, #e3eef5 46%, #d9e8f1 100%);
+  background-attachment: fixed;
   color: var(--color-foam);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -147,31 +159,28 @@ body {
 }
 
 /**
- * Fond de page. La grande nappe radiale colorée a été retirée : c'est la
- * signature visuelle des maquettes générées, et elle noyait les données.
- * À la place, un dégradé vertical sobre et un grain très fin, comme le papier
- * d'une carte marine. Le verdict ne teinte plus que le liseré supérieur.
+ * Voile d'ambiance posé au-dessus de la scène WebGL mais sous le contenu :
+ * il ne porte plus de dégradé (le ciel vient du canvas ou du body), seulement
+ * un grain de papier très fin et le liseré de verdict en haut de page.
  */
 .ambiance {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    linear-gradient(180deg, var(--color-deep) 0%, var(--color-abyss) 34%, var(--color-abyss) 100%);
 }
 
-/* Grain : casse l'aplat parfait qui fait « rendu 3D » */
+/* Grain : casse l'aplat parfait qui trahit un rendu synthétique */
 .ambiance::after {
   content: '';
   position: absolute;
   inset: 0;
-  opacity: 0.035;
-  mix-blend-mode: overlay;
+  opacity: 0.028;
+  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Liseré haut : la seule trace de couleur du verdict sur le fond */
+/* Liseré haut : la trace de couleur du verdict sur le fond */
 .ambiance::before {
   content: '';
   position: absolute;
@@ -180,11 +189,53 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in oklab, var(--verdict) 55%, transparent) 30%,
-    color-mix(in oklab, var(--verdict) 55%, transparent) 70%,
+    color-mix(in oklab, var(--verdict) 70%, transparent) 30%,
+    color-mix(in oklab, var(--verdict) 70%, transparent) 70%,
     transparent
   );
   transition: background 700ms ease;
+}
+
+/**
+ * Fond média par sport : une photo de kite ou une vidéo de surf, posée tout au
+ * fond, sous le champ de vent et sous les cartes en verre. On la tamise
+ * (désaturée, éclaircie) et on la fond dans la couleur de page — franche au
+ * milieu, effacée en haut où se lit le contenu, éteinte en bas — pour qu'elle
+ * pose une ambiance sans jamais disputer la lisibilité des données.
+ */
+.fond-media {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  filter: saturate(0.72) brightness(1.08) contrast(0.94);
+}
+
+.fond-voile {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-abyss) 88%, transparent) 0%,
+      color-mix(in oklab, var(--color-abyss) 66%, transparent) 22%,
+      color-mix(in oklab, var(--color-abyss) 55%, transparent) 52%,
+      color-mix(in oklab, var(--color-abyss) 74%, transparent) 82%,
+      var(--color-abyss) 100%
+    );
+}
+
+/* Crossfade à l'entrée quand on bascule Kite / Surf */
+@keyframes fondApparait {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fond-apparait {
+  animation: fondApparait 700ms ease both;
 }
 
 /* Chiffres tabulaires partout où une valeur mesurée est affichée */
@@ -193,10 +244,8 @@ body {
 }
 
 /**
- * Halo diffus derrière le cadran. Repris de l'idée de sphère lumineuse d'un
- * hero « Odyssey », mais en une seule couche CSS : le shader WebGL d'origine
- * animait un éclair en continu, ce qui n'apporte rien à un instrument de
- * lecture et tournerait en boucle sur la batterie d'un téléphone.
+ * Halo diffus derrière le cadran, dans la couleur du verdict. Une seule couche
+ * CSS : la scène 3D du cadran porte déjà son propre relief.
  */
 .halo-cadran {
   position: relative;
@@ -206,15 +255,15 @@ body {
 .halo-cadran::before {
   content: '';
   position: absolute;
-  inset: -12%;
+  inset: -10%;
   z-index: -1;
   border-radius: 50%;
   background: radial-gradient(
-    circle at 50% 45%,
-    color-mix(in oklab, var(--verdict) 8%, transparent) 0%,
-    transparent 62%
+    circle at 50% 46%,
+    color-mix(in oklab, var(--verdict) 16%, transparent) 0%,
+    transparent 64%
   );
-  filter: blur(22px);
+  filter: blur(26px);
   transition: background 900ms ease;
   pointer-events: none;
 }
@@ -247,13 +296,6 @@ body {
 
 .pulse-douce {
   animation: pulseDouce 2.4s ease-in-out infinite;
-}
-
-/* Le cadran et la flèche de vent s'orientent avec de l'inertie */
-.transition-cadran {
-  transition:
-    transform 1100ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 500ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

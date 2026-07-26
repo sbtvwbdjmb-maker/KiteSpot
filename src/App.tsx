@@ -4,7 +4,7 @@ import type { ResultatLieu } from './services/geocoding'
 import { nommerPosition } from './services/geocoding'
 import { SPOTS, spotVersLieu, idGeo, useResolutionLieu } from './hooks/useLieux'
 import { useProfils } from './hooks/useProfils'
-import { useLocalStorage } from './hooks/useLocalStorage'
+import { useLocalStorage, stockagePersistant } from './hooks/useLocalStorage'
 import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useDefilement } from './hooks/useDefilement'
@@ -23,6 +23,8 @@ import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
 import { HeroAccueil } from '@/components/ui/hero-accueil'
 import { ChampVent } from '@/components/ui/champ-vent'
+import { FondSport } from '@/components/ui/fond-sport'
+import { AlerteStockage } from '@/components/ui/alerte-stockage'
 
 export default function App() {
   const { profils, profilActif, selectionner, ajouter, modifier, supprimer } = useProfils()
@@ -50,6 +52,9 @@ export default function App() {
   const [dateSelectionnee, setDateSelectionnee] = useState<string>('')
   const [resolutionEnCours, setResolutionEnCours] = useState(false)
   const [messageGeoloc, setMessageGeoloc] = useState<string | null>(null)
+  const [localisationEnCours, setLocalisationEnCours] = useState(false)
+  // Testé une seule fois : le navigateur laisse-t-il vraiment persister les réglages ?
+  const [stockageOk] = useState(stockagePersistant)
 
   const { localiser, permission: permissionGeoloc } = useGeolocation()
   const barreRetractee = useDefilement()
@@ -79,6 +84,7 @@ export default function App() {
 
   const utiliserMaPosition = useCallback(async () => {
     setMessageGeoloc(null)
+    setLocalisationEnCours(true)
     try {
       const { lat, lon } = await localiser()
       setPosition({ lat, lon })
@@ -108,8 +114,10 @@ export default function App() {
       )
       setModale(null)
     } catch (e) {
-      // Le message reste affiché dans le sélecteur, qui ne se ferme pas
+      // Le message reste affiché sous les boutons du hero, ou dans le sélecteur
       setMessageGeoloc(e instanceof Error ? e.message : 'Position indisponible')
+    } finally {
+      setLocalisationEnCours(false)
     }
   }, [localiser, choisirResultat, setLieu])
 
@@ -202,8 +210,10 @@ export default function App() {
   if (!profilActif) {
     return (
       <div className="relative min-h-screen">
+        <FondSport sport={sport} />
         <div className="ambiance" aria-hidden />
         <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
+          {!stockageOk && <AlerteStockage />}
           <h1 className="mb-1 font-display text-2xl font-bold text-foam">
             Kite<span style={{ color: 'var(--verdict)' }}>Spot</span>
           </h1>
@@ -220,6 +230,7 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen">
+      <FondSport sport={sport} />
       <div className="ambiance" aria-hidden />
       {/* Champ de vent animé, piloté par les conditions réellement affichées */}
       {conditionsAffichees && (
@@ -230,6 +241,7 @@ export default function App() {
       )}
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
+        {!stockageOk && <AlerteStockage />}
         {/* Chrome flottante : ample en haut de page, elle se resserre au
             défilement pour rendre la place au contenu, sans jamais disparaître
             puisqu'elle porte la bascule Kite/Surf. */}
@@ -255,7 +267,7 @@ export default function App() {
                 type="button"
                 onClick={() => setMenuProfilOuvert((o) => !o)}
                 aria-expanded={menuProfilOuvert}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-foam/[0.05] hover:text-foam"
               >
                 <span aria-hidden>👤</span>
                 {profilActif.nom}
@@ -276,7 +288,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setModale('lieu')}
-              className="rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
+              className="rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-foam/[0.05] hover:text-foam"
             >
               Changer de spot
             </button>
@@ -367,7 +379,11 @@ export default function App() {
             <HeroAccueil
               titre={`Où veux-tu kiter, ${profilActif.nom}\u202f?`}
               sousTitre="KiteSpot lit le vent, le compare à ton poids et à ton niveau, puis te dit s’il faut y aller."
-              actionPrincipale={{ label: '\ud83d\udccd Utiliser ma position', onClick: utiliserMaPosition }}
+              actionPrincipale={{
+                label: localisationEnCours ? '\ud83d\udccd Localisation\u2026' : '\ud83d\udccd Utiliser ma position',
+                onClick: utiliserMaPosition,
+                disabled: localisationEnCours,
+              }}
               actionSecondaire={{ label: 'Chercher un spot', onClick: () => setModale('lieu') }}
               note={messageGeoloc ?? undefined}
               spots={spotsDecouverte}

@@ -43,7 +43,7 @@ export function MenuProfil({
       ref={ref}
       className="verre monte absolute top-full right-0 z-40 mt-2 w-60 overflow-hidden"
     >
-      <div className="border-b border-white/8 px-4 py-3">
+      <div className="border-b border-foam/[0.08] px-4 py-3">
         <p className="text-[14px] font-medium text-foam">{profilActif.nom}</p>
         <p className="tabular font-mono text-[11px] text-dim">
           {profilActif.poids} kg · {profilActif.niveau}
@@ -51,7 +51,7 @@ export function MenuProfil({
       </div>
 
       {autres.length > 0 && (
-        <div className="border-b border-white/8 py-1">
+        <div className="border-b border-foam/[0.08] py-1">
           <p className="px-4 py-1.5 font-mono text-[10px] tracking-[0.16em] text-dim">AUTRES PROFILS</p>
           {autres.map((p) => (
             <button
@@ -61,7 +61,7 @@ export function MenuProfil({
                 onSelectionner(p.id)
                 onFermer()
               }}
-              className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
+              className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-foam/[0.05] hover:text-foam"
             >
               {p.nom}
               <span className="tabular ml-2 font-mono text-[11px] text-dim">{p.poids} kg</span>
@@ -77,7 +77,7 @@ export function MenuProfil({
             onModifier()
             onFermer()
           }}
-          className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
+          className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-foam/[0.05] hover:text-foam"
         >
           Modifier « {profilActif.nom} »
         </button>
@@ -87,7 +87,7 @@ export function MenuProfil({
             onAjouter()
             onFermer()
           }}
-          className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-white/5 hover:text-foam"
+          className="block w-full px-4 py-2 text-left text-[13px] text-muted transition-colors hover:bg-foam/[0.05] hover:text-foam"
         >
           + Ajouter un profil
         </button>

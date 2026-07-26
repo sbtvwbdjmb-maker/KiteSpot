@@ -19,7 +19,7 @@ export function NavSport({ actif, onChanger, className }: Props) {
       role="tablist"
       aria-label="Sport"
       className={cn(
-        'inline-flex rounded-full bg-black/20 p-1 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]',
+        'inline-flex rounded-full bg-foam/[0.05] p-1 shadow-[inset_0_1px_2px_rgb(22_40_54/0.08)]',
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function NavSport({ actif, onChanger, className }: Props) {
               <motion.span
                 layoutId="curseur-sport"
                 transition={reduit ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
-                className="absolute inset-0 rounded-full bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.14)]"
+                className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_3px_rgb(22_40_54/0.18)]"
               />
             )}
             <span

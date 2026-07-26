@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
 import type { AnalyseDirection } from '../lib/direction'
 import { degresVersCardinal } from '../lib/direction'
 
@@ -13,18 +15,37 @@ interface Props {
   directionHouleDeg?: number | null
 }
 
-const C = 110
-const R_DISQUE = 82
-const R_RIM = 98
-const LARGEUR_PLAGE = 9
+/** Inclinaison du plateau : le disque est couché en perspective (≈ 53°). */
+const INCLINAISON = -0.93
 
 /**
- * Le cadran de KiteSpot : une rose des vents qui porte le trait de côte du
- * spot, avec sa bande de sable, la mer d'un côté et la terre de l'autre.
- * On voit immédiatement si le vent pousse vers la plage ou vers le large.
+ * Convertit un cap boussole (0 = N, 90 = E, sens horaire) en rotation autour de
+ * la normale du plateau, pour qu'un objet dont l'avant local est +Y pointe vers
+ * ce cap une fois le plateau incliné.
+ */
+function capVersRotation(deg: number): number {
+  return -(deg * Math.PI) / 180
+}
+
+/** Rapproche un angle d'une cible par le plus court chemin (gère le passage 0/2π). */
+function approcherAngle(courant: number, cible: number, k: number): number {
+  let d = cible - courant
+  d = (((d + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI
+  return courant + d * k
+}
+
+/**
+ * Le cadran de KiteSpot, en volume (three.js).
  *
- * Aucun texte à l'intérieur : les valeurs chiffrées sont déjà lues dans le
- * bandeau, et les superposer ici brouillait la lecture du dessin.
+ * Un plateau circulaire couché en perspective porte le paysage du spot : la
+ * mer d'un côté, la terre de l'autre, la bande de sable et l'écume du rivage
+ * entre les deux. Le plateau pivote selon l'orientation réelle du littoral, si
+ * bien qu'on voit d'un coup d'œil si le vent pousse vers la plage ou vers le
+ * large. Une aiguille volumétrique, dans la couleur du verdict, indique le sens
+ * où le vent pousse ; deux crêtes marquent la provenance de la houle en surf.
+ *
+ * Toute l'information reste dessinée, jamais chiffrée : les valeurs sont déjà
+ * lues dans le bandeau. Les points cardinaux restent en HTML, fixes et nets.
  */
 export function CadranVent({
   directionDeg,
@@ -34,13 +55,289 @@ export function CadranVent({
   analyse,
   directionHouleDeg = null,
 }: Props) {
-  const couleur = !analyse
-    ? 'var(--color-muted)'
-    : analyse.score >= 0.8
-      ? 'var(--color-go)'
-      : analyse.score >= 0.45
-        ? 'var(--color-warn)'
-        : 'var(--color-stop)'
+  const conteneurRef = useRef<HTMLDivElement>(null)
+
+  // Props relues à chaque image, sans jamais relancer la scène
+  const props = useRef({ directionDeg, orientationLittoral, analyse, directionHouleDeg })
+  props.current = { directionDeg, orientationLittoral, analyse, directionHouleDeg }
+
+  useEffect(() => {
+    const conteneur = conteneurRef.current
+    if (!conteneur) return
+
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const lireVar = (nom: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(nom).trim()
+
+    const COULEURS = {
+      go: new THREE.Color(lireVar('--color-go') || '#2f9e63'),
+      warn: new THREE.Color(lireVar('--color-warn') || '#c78a1c'),
+      stop: new THREE.Color(lireVar('--color-stop') || '#c0433c'),
+      muted: new THREE.Color(lireVar('--color-muted') || '#566773'),
+    }
+    const couleurVerdict = (a: AnalyseDirection | null) => {
+      if (!a) return COULEURS.muted
+      if (a.score >= 0.8) return COULEURS.go
+      if (a.score >= 0.45) return COULEURS.warn
+      return COULEURS.stop
+    }
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setClearColor(0x000000, 0)
+    conteneur.appendChild(renderer.domElement)
+    renderer.domElement.style.width = '100%'
+    renderer.domElement.style.height = '100%'
+    renderer.domElement.style.display = 'block'
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100)
+    camera.position.set(0, 0.02, 3.75)
+    camera.lookAt(0, 0.04, 0)
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9))
+    const soleil = new THREE.DirectionalLight(0xffffff, 1.0)
+    soleil.position.set(0.5, 1.4, 1.0)
+    scene.add(soleil)
+
+    // Racine inclinée : tout le cadran est couché en perspective
+    const racine = new THREE.Group()
+    racine.rotation.x = INCLINAISON
+    scene.add(racine)
+
+    // --- Plateau : paysage du spot, un seul disque, un seul shader ---------
+    const paysage = new THREE.Group()
+    racine.add(paysage)
+
+    const uPaysage = {
+      uTime: { value: 0 },
+      uMerClair: { value: new THREE.Color('#a9dcec') },
+      uMerFonce: { value: new THREE.Color('#4d9fbd') },
+      uSable: { value: new THREE.Color('#ecd9ab') },
+      uSableFonce: { value: new THREE.Color('#d4bb87') },
+      uTerre: { value: new THREE.Color('#b7c79a') },
+      uTerreFonce: { value: new THREE.Color('#93a878') },
+      uEcume: { value: new THREE.Color('#f4fbfd') },
+    }
+
+    const matPaysage = new THREE.ShaderMaterial({
+      uniforms: uPaysage,
+      vertexShader: /* glsl */ `
+        varying vec2 vP;
+        void main() {
+          vP = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec2 vP;
+        uniform float uTime;
+        uniform vec3 uMerClair, uMerFonce, uSable, uSableFonce, uTerre, uTerreFonce, uEcume;
+
+        float hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
+        float noise(vec2 p){
+          vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+          return mix(mix(hash(i),hash(i+vec2(1,0)),u.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y);
+        }
+        float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){v+=a*noise(p);p*=2.03;a*=0.5;} return v; }
+
+        void main() {
+          float y = vP.y;
+          float beach = 0.075;
+          vec3 col;
+
+          // Mer : bas-fond clair près du rivage, sombre vers le large
+          float seaT = smoothstep(beach, 1.0, y);
+          vec3 mer = mix(uMerClair, uMerFonce, seaT);
+          float rip = sin(y*24.0 - uTime*1.5 + sin(vP.x*7.0)*0.7)
+                    + 0.5*sin(y*40.0 + vP.x*4.0 - uTime*2.2);
+          mer += smoothstep(0.7, 1.0, rip) * 0.06;
+
+          // Terre : plus sombre vers l'extérieur, grain léger
+          float landT = smoothstep(-beach, -1.0, y);
+          vec3 terre = mix(uTerre, uTerreFonce, landT);
+          terre += (fbm(vP*7.0) - 0.5) * 0.035;
+
+          // Bande de sable
+          vec3 sable = mix(uSable, uSableFonce, smoothstep(0.0, beach, abs(y)));
+
+          if (y > beach) col = mer;
+          else if (y < -beach) col = terre;
+          else col = sable;
+
+          // Écume mobile sur la ligne de rivage (y = beach)
+          float ecume = smoothstep(0.03, 0.0, abs(y - beach));
+          ecume *= 0.55 + 0.45 * sin(vP.x*26.0 - uTime*3.2);
+          col = mix(col, uEcume, clamp(ecume, 0.0, 1.0) * 0.8);
+
+          // Ombrage radial doux vers le bord pour asseoir le volume
+          col *= 1.0 - smoothstep(0.7, 1.02, length(vP)) * 0.18;
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+    })
+
+    const disque = new THREE.Mesh(new THREE.CircleGeometry(1, 96), matPaysage)
+    paysage.add(disque)
+
+    // --- Couronne fixe : bezel + graduations (ne tourne pas avec le littoral) ---
+    const anneau = new THREE.Group()
+    racine.add(anneau)
+
+    const bezel = new THREE.Mesh(
+      new THREE.TorusGeometry(1.015, 0.028, 20, 140),
+      new THREE.MeshStandardMaterial({ color: 0xf3f8fc, metalness: 0.35, roughness: 0.35 }),
+    )
+    anneau.add(bezel)
+
+    const encre = new THREE.Color(lireVar('--color-dim') || '#8497a3')
+    const matTick = new THREE.MeshBasicMaterial({ color: encre, transparent: true, opacity: 0.7 })
+    for (let i = 0; i < 36; i++) {
+      const majeur = i % 3 === 0
+      const long = majeur ? 0.075 : 0.04
+      const tick = new THREE.Mesh(
+        new THREE.BoxGeometry(majeur ? 0.012 : 0.008, long, 0.006),
+        matTick,
+      )
+      const a = (i * 10 * Math.PI) / 180
+      const rMoyen = 0.965 - long / 2
+      tick.position.set(Math.sin(a) * rMoyen, Math.cos(a) * rMoyen, 0.01)
+      tick.rotation.z = -a
+      anneau.add(tick)
+    }
+
+    // --- Houle : deux crêtes vers la provenance (surf) ---------------------
+    const houle = new THREE.Group()
+    racine.add(houle)
+    const matHoule = new THREE.MeshBasicMaterial({ color: 0x4d9fbd, transparent: true, opacity: 0.75 })
+    const crete = (rayon: number, largeur: number, epaisseur: number) => {
+      const courbe = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-largeur, rayon, 0.02),
+        new THREE.Vector3(0, rayon + 0.09, 0.02),
+        new THREE.Vector3(largeur, rayon, 0.02),
+      )
+      return new THREE.Mesh(new THREE.TubeGeometry(courbe, 24, epaisseur, 8, false), matHoule)
+    }
+    houle.add(crete(0.66, 0.16, 0.014))
+    const crete2 = crete(0.8, 0.12, 0.011)
+    ;(crete2.material as THREE.MeshBasicMaterial).opacity = 0.4
+    houle.add(crete2)
+
+    // --- Aiguille du vent : flèche volumétrique flottant au-dessus du plateau ---
+    const aiguille = new THREE.Group()
+    aiguille.position.z = 0.09
+    racine.add(aiguille)
+
+    const matAiguille = new THREE.MeshStandardMaterial({
+      color: COULEURS.muted.clone(),
+      emissive: COULEURS.muted.clone().multiplyScalar(0.22),
+      metalness: 0.2,
+      roughness: 0.32,
+    })
+
+    // Aiguille directionnelle : une seule pointe franche vers où le vent pousse,
+    // une courte queue effilée à l'arrière pour l'équilibre visuel — jamais une
+    // seconde pointe qui rendrait le sens ambigu.
+    const hampe = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.02, 0.58, 20), matAiguille)
+    hampe.position.y = 0.17
+    aiguille.add(hampe)
+
+    const tete = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 24), matAiguille)
+    tete.position.y = 0.56
+    aiguille.add(tete)
+
+    const queue = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.004, 0.16, 16), matAiguille)
+    queue.position.y = -0.16
+    queue.rotation.z = Math.PI
+    aiguille.add(queue)
+
+    const moyeu = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 24, 20),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.3, roughness: 0.25 }),
+    )
+    aiguille.add(moyeu)
+
+    // Angles courants, lissés vers la cible (inertie type instrument)
+    let angPaysage = capVersRotation(orientationLittoral ?? 0)
+    let angAiguille = capVersRotation(directionDeg + 180)
+    let angHoule = capVersRotation(directionHouleDeg ?? 0)
+    paysage.rotation.z = angPaysage
+    aiguille.rotation.z = angAiguille
+    houle.rotation.z = angHoule
+
+    const redimensionner = () => {
+      const c = Math.min(conteneur.clientWidth, conteneur.clientHeight)
+      renderer.setSize(c, c, false)
+    }
+    redimensionner()
+
+    let frame = 0
+    let precedent = performance.now()
+
+    const dessiner = (maintenant: number) => {
+      const dt = Math.min(0.05, (maintenant - precedent) / 1000)
+      precedent = maintenant
+      const p = props.current
+      const k = reduit ? 1 : 1 - Math.exp(-dt * 5)
+
+      angPaysage = approcherAngle(angPaysage, capVersRotation(p.orientationLittoral ?? 0), k)
+      angAiguille = approcherAngle(angAiguille, capVersRotation(p.directionDeg + 180), k)
+      paysage.rotation.z = angPaysage
+      // Sans orientation connue, on masque le paysage plutôt que d'inventer une côte
+      disque.visible = p.orientationLittoral !== null
+      aiguille.rotation.z = angAiguille
+
+      const montrerHoule = p.directionHouleDeg !== null && p.directionHouleDeg !== undefined
+      houle.visible = montrerHoule
+      if (montrerHoule) {
+        angHoule = approcherAngle(angHoule, capVersRotation(p.directionHouleDeg as number), k)
+        houle.rotation.z = angHoule
+      }
+
+      // Couleur de l'aiguille : elle glisse vers la couleur du verdict
+      const cible = couleurVerdict(p.analyse)
+      matAiguille.color.lerp(cible, k)
+      matAiguille.emissive.copy(matAiguille.color).multiplyScalar(0.22)
+
+      if (!reduit) {
+        uPaysage.uTime.value += dt
+        // Léger flottement de l'aiguille, pour le vivant
+        aiguille.position.z = 0.09 + Math.sin(maintenant * 0.0016) * 0.012
+      }
+
+      renderer.render(scene, camera)
+      frame = requestAnimationFrame(dessiner)
+    }
+    frame = requestAnimationFrame(dessiner)
+
+    const surVisibilite = () => {
+      cancelAnimationFrame(frame)
+      if (document.visibilityState === 'visible') {
+        precedent = performance.now()
+        frame = requestAnimationFrame(dessiner)
+      }
+    }
+    const observer = new ResizeObserver(redimensionner)
+    observer.observe(conteneur)
+    document.addEventListener('visibilitychange', surVisibilite)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', surVisibilite)
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (m.geometry) m.geometry.dispose()
+        const mat = (m as THREE.Mesh).material
+        if (Array.isArray(mat)) mat.forEach((x) => x.dispose())
+        else if (mat) (mat as THREE.Material).dispose()
+      })
+      renderer.dispose()
+      if (renderer.domElement.parentNode === conteneur) conteneur.removeChild(renderer.domElement)
+    }
+  }, [])
 
   const description = analyse
     ? `Vent de ${degresVersCardinal(directionDeg)} à ${Math.round(ventNoeuds)} nœuds, rafales ${Math.round(rafalesNoeuds)}, ${analyse.label} sur ce spot`
@@ -48,162 +345,20 @@ export function CadranVent({
 
   return (
     <div className="halo-cadran relative mx-auto aspect-square w-full max-w-[16rem] sm:max-w-[19rem]">
-      <svg viewBox="0 0 220 220" className="h-full w-full" role="img" aria-label={description}>
-        <defs>
-          <clipPath id="disque">
-            <circle cx={C} cy={C} r={R_DISQUE} />
-          </clipPath>
-
-          {/* Dégradé de profondeur : l'eau s'assombrit vers le large */}
-          <linearGradient id="profondeur" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#03202e" />
-            <stop offset="70%" stopColor="#0a3a4d" />
-            <stop offset="100%" stopColor="#0e4a5e" />
-          </linearGradient>
-
-          {/* Houle de surface, plus serrée près du bord */}
-          <pattern id="houle" width="14" height="9" patternUnits="userSpaceOnUse">
-            <path
-              d="M0 7 Q3.5 3.6 7 7 T14 7"
-              fill="none"
-              stroke="#5fb6d4"
-              strokeWidth="0.7"
-              opacity="0.22"
-            />
-          </pattern>
-
-          {/* Halo diffus derrière le disque, dans la couleur du verdict */}
-          <radialGradient id="halo">
-            <stop offset="55%" stopColor={couleur} stopOpacity="0" />
-            <stop offset="100%" stopColor={couleur} stopOpacity="0.16" />
-          </radialGradient>
-        </defs>
-
-        <circle cx={C} cy={C} r={R_RIM} fill="url(#halo)" />
-
-        {/* Le paysage, pivoté selon l'orientation réelle du littoral */}
-        {orientationLittoral !== null ? (
-          <g
-            clipPath="url(#disque)"
-            className="transition-cadran"
-            style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${orientationLittoral}deg)` }}
-          >
-            {/* Mer */}
-            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#profondeur)" />
-            <rect x={C - R_DISQUE} y={C - R_DISQUE} width={R_DISQUE * 2} height={R_DISQUE} fill="url(#houle)" />
-
-            {/* Terre */}
-            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={R_DISQUE} fill="#16241c" />
-
-            {/* Bande de sable le long du rivage */}
-            <rect x={C - R_DISQUE} y={C} width={R_DISQUE * 2} height={LARGEUR_PLAGE} fill="#c9ad7a" opacity="0.55" />
-            <rect
-              x={C - R_DISQUE}
-              y={C + LARGEUR_PLAGE}
-              width={R_DISQUE * 2}
-              height={4}
-              fill="#8a7550"
-              opacity="0.35"
-            />
-
-            {/* Écume : la ligne de rivage elle-même */}
-            <line
-              x1={C - R_DISQUE}
-              y1={C}
-              x2={C + R_DISQUE}
-              y2={C}
-              stroke="#eaf7fb"
-              strokeWidth="1.4"
-              opacity="0.55"
-            />
-          </g>
-        ) : (
-          <circle cx={C} cy={C} r={R_DISQUE} fill="url(#profondeur)" opacity="0.6" />
-        )}
-
-        <circle cx={C} cy={C} r={R_DISQUE} fill="none" stroke="var(--color-line)" strokeWidth="1" />
-
-        {/* Couronne graduée : trait long tous les 30°, fin tous les 10° */}
-        {Array.from({ length: 36 }, (_, i) => {
-          const majeur = i % 3 === 0
-          const a = (i * 10 * Math.PI) / 180
-          const r1 = R_RIM - (majeur ? 9 : 4)
-          return (
-            <line
-              key={i}
-              x1={C + r1 * Math.sin(a)}
-              y1={C - r1 * Math.cos(a)}
-              x2={C + R_RIM * Math.sin(a)}
-              y2={C - R_RIM * Math.cos(a)}
-              stroke="var(--color-dim)"
-              strokeWidth={majeur ? 1.3 : 0.8}
-              opacity={majeur ? 0.85 : 0.35}
-            />
-          )
-        })}
-
-        {/* Houle : deux crêtes bleues qui pointent vers sa provenance.
-            Distinctes de l'aiguille de vent par la forme et la couleur. */}
-        {directionHouleDeg !== null && (
-          <g
-            className="transition-cadran"
-            style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionHouleDeg}deg)` }}
-          >
-            <path
-              d={`M${C - 15} ${C - 76} Q${C} ${C - 66} ${C + 15} ${C - 76}`}
-              fill="none"
-              stroke="#5fb6d4"
-              strokeWidth="2.8"
-              strokeLinecap="round"
-            />
-            <path
-              d={`M${C - 11} ${C - 64} Q${C} ${C - 55} ${C + 11} ${C - 64}`}
-              fill="none"
-              stroke="#5fb6d4"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              opacity="0.55"
-            />
-          </g>
-        )}
-
-        {/* Aiguille du vent : elle pointe dans le sens où le vent pousse */}
-        <g
-          className="transition-cadran"
-          style={{ transformOrigin: `${C}px ${C}px`, transform: `rotate(${directionDeg}deg)` }}
-        >
-          <line
-            x1={C}
-            y1={C - 52}
-            x2={C}
-            y2={C + 34}
-            stroke={couleur}
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.35"
-          />
-          <path
-            d={`M${C} ${C + 46} L${C - 9} ${C + 26} L${C} ${C + 31} L${C + 9} ${C + 26} Z`}
-            fill={couleur}
-          />
-          <circle cx={C} cy={C - 52} r="3.5" fill={couleur} opacity="0.75" />
-        </g>
-
-        <circle cx={C} cy={C} r="3" fill="var(--color-foam)" opacity="0.55" />
-      </svg>
+      <div ref={conteneurRef} className="h-full w-full" role="img" aria-label={description} />
 
       {/* Points cardinaux, fixes : ils ne tournent pas avec le spot */}
       {(['N', 'E', 'S', 'O'] as const).map((point, i) => {
         const pos = [
-          { top: '-4%', left: '50%', transform: 'translateX(-50%)' },
-          { top: '50%', right: '-4%', transform: 'translateY(-50%)' },
-          { bottom: '-4%', left: '50%', transform: 'translateX(-50%)' },
-          { top: '50%', left: '-4%', transform: 'translateY(-50%)' },
+          { top: '1%', left: '50%', transform: 'translateX(-50%)' },
+          { top: '50%', right: '2%', transform: 'translateY(-50%)' },
+          { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },
+          { top: '50%', left: '2%', transform: 'translateY(-50%)' },
         ][i]
         return (
           <span
             key={point}
-            className="absolute font-mono text-[11px] tracking-widest text-muted"
+            className="pointer-events-none absolute font-mono text-[11px] font-medium tracking-widest text-muted"
             style={pos}
           >
             {point}

@@ -39,7 +39,7 @@ export function Modale({ titre, onFermer, children }: Props) {
         tabIndex={-1}
         className="verre monte flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-b-none sm:rounded-b-[var(--rayon-l)]"
       >
-        <header className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <header className="flex items-center justify-between border-b border-foam/[0.08] px-5 py-4">
           <h2 className="font-mono text-[11px] tracking-[0.22em] text-muted">{titre.toUpperCase()}</h2>
           <button
             type="button"

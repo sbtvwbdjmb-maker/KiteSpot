@@ -7,6 +7,7 @@ import type { Spot } from '@/types/spot'
 interface Action {
   label: string
   onClick: () => void
+  disabled?: boolean
 }
 
 interface Props {
@@ -72,7 +73,12 @@ export function HeroAccueil({
             className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
           >
             {actionPrincipale && (
-              <Bouton variante="principal" onClick={actionPrincipale.onClick} className="px-6 py-3.5 text-[15px]">
+              <Bouton
+                variante="principal"
+                onClick={actionPrincipale.onClick}
+                disabled={actionPrincipale.disabled}
+                className="px-6 py-3.5 text-[15px]"
+              >
                 {actionPrincipale.label}
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path
