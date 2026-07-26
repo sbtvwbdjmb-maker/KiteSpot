@@ -32,6 +32,20 @@ export function idGeo(lat: number, lon: number): string {
   return `geo:${lat.toFixed(4)},${lon.toFixed(4)}`
 }
 
+/** Spot curaté qui coïncide avec un point cherché — à moins de ~2 km */
+function spotProche(lat: number, lon: number): Spot | undefined {
+  return SPOTS.find((s) => Math.abs(s.lat - lat) < 0.02 && Math.abs(s.lon - lon) < 0.02)
+}
+
+/**
+ * L'identifiant qu'aura un résultat de recherche une fois résolu en lieu :
+ * l'id du spot curaté s'il en touche un, sinon la clé géographique. Permet de
+ * savoir si un résultat est déjà liké sans avoir à le résoudre d'abord.
+ */
+export function idResultat(resultat: ResultatLieu): string {
+  return spotProche(resultat.lat, resultat.lon)?.id ?? idGeo(resultat.lat, resultat.lon)
+}
+
 /**
  * Résout un lieu cherché en lieu analysable.
  *
@@ -52,10 +66,8 @@ export function useResolutionLieu() {
       const id = idGeo(resultat.lat, resultat.lon)
 
       // Un lieu cherché qui tombe sur un spot curaté récupère ses données vérifiées
-      const spotProche = SPOTS.find(
-        (s) => Math.abs(s.lat - resultat.lat) < 0.02 && Math.abs(s.lon - resultat.lon) < 0.02,
-      )
-      if (spotProche) return spotVersLieu(spotProche)
+      const curate = spotProche(resultat.lat, resultat.lon)
+      if (curate) return spotVersLieu(curate)
 
       const correction = corrections[id]
       if (correction !== undefined) {

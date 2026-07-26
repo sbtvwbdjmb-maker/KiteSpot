@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Lieu } from './types/lieu'
 import type { ResultatLieu } from './services/geocoding'
 import { nommerPosition } from './services/geocoding'
-import { SPOTS, spotVersLieu, idGeo, useResolutionLieu } from './hooks/useLieux'
+import { SPOTS, spotVersLieu, idGeo, idResultat, useResolutionLieu } from './hooks/useLieux'
 import { useProfils } from './hooks/useProfils'
+import { useFavoris } from './hooks/useFavoris'
 import { useLocalStorage, stockagePersistant } from './hooks/useLocalStorage'
 import { useConditions, useFraicheur } from './hooks/useConditions'
 import { useGeolocation } from './hooks/useGeolocation'
@@ -22,12 +23,12 @@ import { CreationProfil } from './components/CreationProfil'
 import { Modale } from './components/Modale'
 import { Provenance } from './components/Provenance'
 import { HeroAccueil } from '@/components/ui/hero-accueil'
-import { ChampVent } from '@/components/ui/champ-vent'
 import { FondSport } from '@/components/ui/fond-sport'
 import { AlerteStockage } from '@/components/ui/alerte-stockage'
 
 export default function App() {
   const { profils, profilActif, selectionner, ajouter, modifier, supprimer } = useProfils()
+  const { favoris, estFavori, basculer: basculerFavori, retirer: retirerFavori } = useFavoris()
   const { resoudre, corrigerOrientation } = useResolutionLieu()
   // On mémorise le lieu entier, pas seulement un identifiant de spot :
   // un lieu cherché librement doit être retrouvé au retour sur le site.
@@ -80,6 +81,36 @@ export default function App() {
       }
     },
     [resoudre, setLieu],
+  )
+
+  // Un favori est déjà résolu (orientation comprise) : on le pose directement,
+  // sans repasser par le géocodeur ni l'API d'orientation.
+  const choisirLieu = useCallback(
+    (choisi: Lieu) => {
+      setHeureSelectionnee(null)
+      setLieu(choisi)
+    },
+    [setLieu],
+  )
+
+  // Like/unlike depuis un résultat de recherche, sans le sélectionner. Un spot
+  // curaté est liké tout de suite ; un lieu OSM doit d'abord être résolu
+  // (orientation comprise) pour être retrouvé plus tard sans re-géocodage.
+  const basculerFavoriResultat = useCallback(
+    async (resultat: ResultatLieu) => {
+      const id = idResultat(resultat)
+      if (estFavori(id)) {
+        retirerFavori(id)
+        return
+      }
+      const spotCurate = SPOTS.find((s) => s.id === id)
+      if (spotCurate) {
+        basculerFavori(spotVersLieu(spotCurate))
+        return
+      }
+      basculerFavori(await resoudre(resultat))
+    },
+    [estFavori, retirerFavori, basculerFavori, resoudre],
   )
 
   const utiliserMaPosition = useCallback(async () => {
@@ -232,13 +263,6 @@ export default function App() {
     <div className="relative min-h-screen">
       <FondSport sport={sport} />
       <div className="ambiance" aria-hidden />
-      {/* Champ de vent animé, piloté par les conditions réellement affichées */}
-      {conditionsAffichees && (
-        <ChampVent
-          ventNoeuds={conditionsAffichees.ventNoeuds}
-          directionDeg={conditionsAffichees.directionDeg}
-        />
-      )}
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-14 sm:px-6">
         {!stockageOk && <AlerteStockage />}
@@ -299,9 +323,25 @@ export default function App() {
           <main className="flex flex-1 flex-col gap-8 pt-2">
             <div className="monte">
               <p className="font-mono text-[11px] tracking-[0.2em] text-muted">SPOT SÉLECTIONNÉ</p>
-              <h1 className="mt-1.5 font-display text-[clamp(1.5rem,4.5vw,2.1rem)] leading-tight font-bold text-foam">
-                {lieu.nom}
-              </h1>
+              <div className="mt-1.5 flex items-start gap-3">
+                <h1 className="font-display text-[clamp(1.5rem,4.5vw,2.1rem)] leading-tight font-bold text-foam">
+                  {lieu.nom}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => basculerFavori(lieu)}
+                  aria-pressed={estFavori(lieu.id)}
+                  aria-label={estFavori(lieu.id) ? 'Retirer de mes spots favoris' : 'Ajouter à mes spots favoris'}
+                  title={estFavori(lieu.id) ? 'Retirer de mes spots favoris' : 'Ajouter à mes spots favoris'}
+                  className={`mt-0.5 shrink-0 rounded-full p-2 text-[20px] leading-none transition-colors ${
+                    estFavori(lieu.id)
+                      ? 'text-stop hover:bg-stop/10'
+                      : 'text-muted hover:bg-foam/[0.05] hover:text-foam'
+                  }`}
+                >
+                  {estFavori(lieu.id) ? '♥' : '♡'}
+                </button>
+              </div>
               <p className="mt-1 text-[13px] text-muted">
                 {[lieu.localite, lieu.pays].filter(Boolean).join(' · ')}
                 {distanceLieu !== undefined && ` · à ${formaterDistance(distanceLieu)}`}
@@ -386,6 +426,9 @@ export default function App() {
               }}
               actionSecondaire={{ label: 'Chercher un spot', onClick: () => setModale('lieu') }}
               note={messageGeoloc ?? undefined}
+              favoris={favoris}
+              onChoisirFavori={choisirLieu}
+              onRetirerFavori={retirerFavori}
               spots={spotsDecouverte}
               onChoisirSpot={(spot) =>
                 choisirResultat({
@@ -407,7 +450,15 @@ export default function App() {
         <SelecteurLieu
           distances={distances}
           positionConnue={position !== null}
+          favoris={favoris}
           onChoisirResultat={choisirResultat}
+          onChoisirLieu={(favori) => {
+            choisirLieu(favori)
+            setModale(null)
+          }}
+          onRetirerFavori={retirerFavori}
+          estFavori={estFavori}
+          onBasculerFavori={basculerFavoriResultat}
           onFermer={() => setModale(null)}
         />
       )}

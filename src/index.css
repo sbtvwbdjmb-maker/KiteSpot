@@ -210,18 +210,39 @@ body {
   filter: saturate(0.72) brightness(1.08) contrast(0.94);
 }
 
+/**
+ * Recadrage du plan Kite (gros plan, kiteur au centre de l'image). Avec
+ * `object-position: center`, le rider reste à mi-hauteur de l'écran quelle que
+ * soit la largeur. Sur les mises en page larges, la carte « Aujourd'hui » monte
+ * jusque-là : on remonte donc l'image d'un cran (et on l'agrandit à peine) pour
+ * poser le kiteur dans la zone dégagée du haut, visible en continu. Réservé aux
+ * écrans ≥ 640px : sur mobile la carte est bien plus bas, le décalage exposerait
+ * un bord et le rider est déjà pleinement visible.
+ */
+@media (min-width: 640px) {
+  .fond-media--kite {
+    transform: scale(1.14) translateY(-13%);
+    transform-origin: center;
+  }
+}
+
+/**
+ * Voile clair posé sur le haut du fond média : il éclaircit la bande où se lit
+ * le verdict pour que l'encre foncée ressorte, même sur une photo chaude et
+ * chargée (coucher de soleil). Dégradé vertical, franc en haut, éteint vers le
+ * milieu — aucune arête, ce n'est pas une carte mais une brume de jour.
+ */
 .fond-voile {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--color-abyss) 88%, transparent) 0%,
-      color-mix(in oklab, var(--color-abyss) 66%, transparent) 22%,
-      color-mix(in oklab, var(--color-abyss) 55%, transparent) 52%,
-      color-mix(in oklab, var(--color-abyss) 74%, transparent) 82%,
-      var(--color-abyss) 100%
-    );
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-abyss) 72%, transparent) 0%,
+    color-mix(in oklab, var(--color-abyss) 42%, transparent) 26%,
+    color-mix(in oklab, var(--color-abyss) 12%, transparent) 44%,
+    transparent 60%
+  );
 }
 
 /* Crossfade à l'entrée quand on bascule Kite / Surf */
@@ -241,6 +262,20 @@ body {
 /* Chiffres tabulaires partout où une valeur mesurée est affichée */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Lisibilité du texte posé à même la vidéo de fond (le bloc verdict n'a pas de
+ * carte derrière lui). Pas de plaque : seulement un halo clair très diffus sur
+ * le texte lui-même. Sur l'écume blanche du kite et du surf, le halo est
+ * invisible (l'encre foncée se lit déjà sur le clair) ; sur les zones sombres de
+ * la vidéo, il cerne les lettres de lumière et les décolle du fond.
+ */
+.lisible-media {
+  text-shadow:
+    0 1px 2px rgb(255 255 255 / 0.9),
+    0 0 6px rgb(255 255 255 / 0.85),
+    0 0 14px rgb(255 255 255 / 0.6);
 }
 
 /**

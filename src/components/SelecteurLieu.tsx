@@ -2,14 +2,40 @@ import { useEffect, useMemo, useState } from 'react'
 import { Modale } from './Modale'
 import { useDebounce } from '../hooks/useDebounce'
 import { lireCoordonnees, rechercherLieu, type ResultatLieu } from '../services/geocoding'
-import { SPOTS } from '../hooks/useLieux'
+import { SPOTS, idResultat } from '../hooks/useLieux'
 import { formaterDistance } from '../lib/geo'
+import type { Lieu } from '../types/lieu'
 
 interface Props {
   distances: Record<string, number>
   positionConnue: boolean
+  favoris: Lieu[]
   onChoisirResultat: (resultat: ResultatLieu) => void
+  /** Choix d'un favori déjà résolu : inutile de le re-géocoder */
+  onChoisirLieu: (lieu: Lieu) => void
+  onRetirerFavori: (id: string) => void
+  estFavori: (id: string) => boolean
+  /** Like/unlike depuis les résultats de recherche, sans les sélectionner */
+  onBasculerFavori: (resultat: ResultatLieu) => void
   onFermer: () => void
+}
+
+/** Cœur à liker, réutilisé sur chaque résultat de recherche */
+function BoutonCoeur({ actif, nom, onClick }: { actif: boolean; nom: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={actif}
+      aria-label={actif ? `Retirer ${nom} de mes spots favoris` : `Ajouter ${nom} à mes spots favoris`}
+      title={actif ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      className={`shrink-0 rounded-full px-2.5 py-2 text-[16px] leading-none transition-colors ${
+        actif ? 'text-stop hover:bg-stop/10' : 'text-dim hover:bg-raised hover:text-foam'
+      }`}
+    >
+      {actif ? '♥' : '♡'}
+    </button>
+  )
 }
 
 /** Minuscules sans accents, pour que « hyeres » retrouve « Hyères » */
@@ -20,7 +46,12 @@ function normaliser(texte: string): string {
 export function SelecteurLieu({
   distances,
   positionConnue,
+  favoris,
   onChoisirResultat,
+  onChoisirLieu,
+  onRetirerFavori,
+  estFavori,
+  onBasculerFavori,
   onFermer,
 }: Props) {
   const [requete, setRequete] = useState('')
@@ -93,39 +124,82 @@ export function SelecteurLieu({
         className="w-full rounded-xl border border-line bg-surface/60 px-4 py-2.5 text-[14px] text-foam outline-none placeholder:text-dim focus:border-foam/40"
       />
 
+      {!requeteDebounced.trim() && favoris.length > 0 && (
+        <>
+          <p className="mt-4 mb-2 font-mono text-[10px] tracking-[0.18em] text-dim">MES SPOTS FAVORIS</p>
+          <ul className="space-y-0.5">
+            {favoris.map((favori) => (
+              <li key={favori.id} className="group flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChoisirLieu(favori)
+                    onFermer()
+                  }}
+                  className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-raised"
+                >
+                  <span className="block truncate text-[14px] text-foam">{favori.nom}</span>
+                  <span className="block truncate text-[12px] text-dim">
+                    {[favori.localite, favori.pays].filter(Boolean).join(' · ')}
+                    {distances[favori.id] !== undefined && ` · ${formaterDistance(distances[favori.id])}`}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRetirerFavori(favori.id)}
+                  aria-label={`Retirer ${favori.nom} de mes spots favoris`}
+                  title="Retirer des favoris"
+                  className="shrink-0 rounded-full px-2.5 py-2 text-[15px] leading-none text-dim transition-colors hover:bg-raised hover:text-stop"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       {spotsCorrespondants.length > 0 && (
         <>
           <p className="mt-4 mb-2 font-mono text-[10px] tracking-[0.18em] text-dim">
             {requeteDebounced.trim() ? 'SPOTS VÉRIFIÉS' : positionConnue ? 'LES PLUS PROCHES' : 'SPOTS DISCRETS D’ABORD'}
           </p>
           <ul className="space-y-0.5">
-            {spotsCorrespondants.map((spot) => (
-              <li key={spot.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChoisirResultat({
-                      cle: spot.id,
-                      nom: spot.name,
-                      localite: spot.locality,
-                      pays: spot.country,
-                      lat: spot.lat,
-                      lon: spot.lon,
-                      categorie: 'spot',
-                    })
-                    onFermer()
-                  }}
-                  className="w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-raised"
-                >
-                  <span className="block text-[14px] text-foam">{spot.name}</span>
-                  <span className="block text-[12px] text-dim">
-                    {spot.locality} · {spot.country}
-                    {distances[spot.id] !== undefined && ` · ${formaterDistance(distances[spot.id])}`}
-                    <span className="ml-1.5 text-go/70">orientation vérifiée</span>
-                  </span>
-                </button>
-              </li>
-            ))}
+            {spotsCorrespondants.map((spot) => {
+              const resultat: ResultatLieu = {
+                cle: spot.id,
+                nom: spot.name,
+                localite: spot.locality,
+                pays: spot.country,
+                lat: spot.lat,
+                lon: spot.lon,
+                categorie: 'spot',
+              }
+              return (
+                <li key={spot.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChoisirResultat(resultat)
+                      onFermer()
+                    }}
+                    className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-raised"
+                  >
+                    <span className="block text-[14px] text-foam">{spot.name}</span>
+                    <span className="block text-[12px] text-dim">
+                      {spot.locality} · {spot.country}
+                      {distances[spot.id] !== undefined && ` · ${formaterDistance(distances[spot.id])}`}
+                      <span className="ml-1.5 text-go/70">orientation vérifiée</span>
+                    </span>
+                  </button>
+                  <BoutonCoeur
+                    actif={estFavori(idResultat(resultat))}
+                    nom={spot.name}
+                    onClick={() => onBasculerFavori(resultat)}
+                  />
+                </li>
+              )
+            })}
           </ul>
         </>
       )}
@@ -138,14 +212,14 @@ export function SelecteurLieu({
           {erreur && <p className="px-3 py-2 text-[13px] text-stop">{erreur}</p>}
           <ul className="space-y-0.5">
             {resultats.map((lieu) => (
-              <li key={lieu.cle}>
+              <li key={lieu.cle} className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => {
                     onChoisirResultat(lieu)
                     onFermer()
                   }}
-                  className="w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-raised"
+                  className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-raised"
                 >
                   <span className="block text-[14px] text-foam">{lieu.nom}</span>
                   <span className="block text-[12px] text-dim">
@@ -153,6 +227,13 @@ export function SelecteurLieu({
                     {lieu.categorie && <span className="ml-1.5 opacity-70">{lieu.categorie}</span>}
                   </span>
                 </button>
+                {lieu.categorie !== 'coords' && (
+                  <BoutonCoeur
+                    actif={estFavori(idResultat(lieu))}
+                    nom={lieu.nom}
+                    onClick={() => onBasculerFavori(lieu)}
+                  />
+                )}
               </li>
             ))}
             {!recherche && !erreur && resultats.length === 0 && (

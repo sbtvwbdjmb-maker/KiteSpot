@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { AnalyseDirection } from '../lib/direction'
 import { degresVersCardinal } from '../lib/direction'
 
@@ -85,6 +86,9 @@ export function CadranVent({
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.setClearColor(0x000000, 0)
+    // Ombres douces : c'est l'indice de volume le plus fort du cadran
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
     conteneur.appendChild(renderer.domElement)
     renderer.domElement.style.width = '100%'
     renderer.domElement.style.height = '100%'
@@ -95,18 +99,56 @@ export function CadranVent({
     camera.position.set(0, 0.02, 3.75)
     camera.lookAt(0, 0.04, 0)
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9))
-    const soleil = new THREE.DirectionalLight(0xffffff, 1.0)
-    soleil.position.set(0.5, 1.4, 1.0)
+    // Éclairage d'ambiance issu d'un studio : donne aux métaux des reflets
+    // crédibles (bezel, aiguille), sans toucher les couleurs peintes du paysage.
+    const pmrem = new THREE.PMREMGenerator(renderer)
+    const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04)
+    scene.environment = envRT.texture
+    scene.environmentIntensity = 0.55
+    pmrem.dispose()
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35))
+    const soleil = new THREE.DirectionalLight(0xffffff, 1.35)
+    soleil.position.set(0.6, 1.5, 1.2)
+    soleil.castShadow = true
+    soleil.shadow.mapSize.set(1024, 1024)
+    soleil.shadow.camera.near = 0.5
+    soleil.shadow.camera.far = 9
+    soleil.shadow.camera.left = -1.6
+    soleil.shadow.camera.right = 1.6
+    soleil.shadow.camera.top = 1.6
+    soleil.shadow.camera.bottom = -1.6
+    soleil.shadow.bias = -0.0015
+    soleil.shadow.radius = 4
     scene.add(soleil)
+    // Contre-jour discret pour détacher le rebord du fond
+    const contre = new THREE.DirectionalLight(0xdfe6ee, 0.4)
+    contre.position.set(-0.8, -0.4, 0.9)
+    scene.add(contre)
 
     // Racine inclinée : tout le cadran est couché en perspective
     const racine = new THREE.Group()
     racine.rotation.x = INCLINAISON
     scene.add(racine)
 
+    // --- Corps du cadran : un vrai palet épais sous le paysage -------------
+    // Donne au cadran l'assise d'un objet réel : une tranche visible, un fond,
+    // un rebord biseauté qui accroche la lumière. Solide de révolution : sa
+    // rotation est sans effet, on le laisse donc fixe.
+    const EPAISSEUR = 0.2
+    const corps = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.0, 0.965, EPAISSEUR, 96, 1, false),
+      new THREE.MeshStandardMaterial({ color: 0xf4f7fa, metalness: 0.15, roughness: 0.55 }),
+    )
+    corps.rotation.x = Math.PI / 2 // axe du cylindre aligné sur la normale du plateau
+    corps.position.z = -EPAISSEUR / 2 // face supérieure ramenée en z = 0
+    corps.castShadow = true
+    corps.receiveShadow = true
+    racine.add(corps)
+
     // --- Plateau : paysage du spot, un seul disque, un seul shader ---------
     const paysage = new THREE.Group()
+    paysage.position.z = 0.004 // posé juste au-dessus du corps, sans z-fighting
     racine.add(paysage)
 
     const uPaysage = {
@@ -153,6 +195,9 @@ export function CadranVent({
           float rip = sin(y*24.0 - uTime*1.5 + sin(vP.x*7.0)*0.7)
                     + 0.5*sin(y*40.0 + vP.x*4.0 - uTime*2.2);
           mer += smoothstep(0.7, 1.0, rip) * 0.06;
+          // Miroitement du soleil : paillettes mobiles, plus denses vers le large
+          float glint = smoothstep(0.62, 1.0, noise(vec2(vP.x*20.0, y*26.0 - uTime*0.9)));
+          mer += glint * smoothstep(beach, 0.85, y) * 0.05;
 
           // Terre : plus sombre vers l'extérieur, grain léger
           float landT = smoothstep(-beach, -1.0, y);
@@ -179,18 +224,37 @@ export function CadranVent({
       `,
     })
 
-    const disque = new THREE.Mesh(new THREE.CircleGeometry(1, 96), matPaysage)
+    const disque = new THREE.Mesh(new THREE.CircleGeometry(0.965, 96), matPaysage)
     paysage.add(disque)
+
+    // Récepteur d'ombre transparent : capte l'ombre portée de l'aiguille sur le
+    // plateau sans repeindre le paysage (le shader ne reçoit pas les ombres).
+    const receveur = new THREE.Mesh(
+      new THREE.CircleGeometry(0.965, 96),
+      new THREE.ShadowMaterial({ opacity: 0.26 }),
+    )
+    receveur.position.z = 0.006
+    receveur.receiveShadow = true
+    racine.add(receveur)
 
     // --- Couronne fixe : bezel + graduations (ne tourne pas avec le littoral) ---
     const anneau = new THREE.Group()
     racine.add(anneau)
 
     const bezel = new THREE.Mesh(
-      new THREE.TorusGeometry(1.015, 0.028, 20, 140),
-      new THREE.MeshStandardMaterial({ color: 0xf3f8fc, metalness: 0.35, roughness: 0.35 }),
+      new THREE.TorusGeometry(1.0, 0.05, 28, 180),
+      new THREE.MeshStandardMaterial({ color: 0xeef3f8, metalness: 0.8, roughness: 0.28 }),
     )
+    bezel.castShadow = true
     anneau.add(bezel)
+
+    // Gorge intérieure sombre : sépare le rebord du paysage, creuse le relief
+    const gorge = new THREE.Mesh(
+      new THREE.TorusGeometry(0.965, 0.01, 12, 160),
+      new THREE.MeshStandardMaterial({ color: 0x2c3a44, metalness: 0.5, roughness: 0.5 }),
+    )
+    gorge.position.z = 0.01
+    anneau.add(gorge)
 
     const encre = new THREE.Color(lireVar('--color-dim') || '#8497a3')
     const matTick = new THREE.MeshBasicMaterial({ color: encre, transparent: true, opacity: 0.7 })
@@ -232,9 +296,9 @@ export function CadranVent({
 
     const matAiguille = new THREE.MeshStandardMaterial({
       color: COULEURS.muted.clone(),
-      emissive: COULEURS.muted.clone().multiplyScalar(0.22),
-      metalness: 0.2,
-      roughness: 0.32,
+      emissive: COULEURS.muted.clone().multiplyScalar(0.18),
+      metalness: 0.6,
+      roughness: 0.22,
     })
 
     // Aiguille directionnelle : une seule pointe franche vers où le vent pousse,
@@ -254,10 +318,13 @@ export function CadranVent({
     aiguille.add(queue)
 
     const moyeu = new THREE.Mesh(
-      new THREE.SphereGeometry(0.05, 24, 20),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.3, roughness: 0.25 }),
+      new THREE.SphereGeometry(0.055, 32, 24),
+      new THREE.MeshStandardMaterial({ color: 0xf7fafc, metalness: 0.85, roughness: 0.18 }),
     )
     aiguille.add(moyeu)
+
+    // L'aiguille projette une ombre sur le plateau : le relief se lit d'emblée
+    ;[hampe, tete, queue, moyeu].forEach((m) => (m.castShadow = true))
 
     // Angles courants, lissés vers la cible (inertie type instrument)
     let angPaysage = capVersRotation(orientationLittoral ?? 0)
@@ -334,6 +401,7 @@ export function CadranVent({
         if (Array.isArray(mat)) mat.forEach((x) => x.dispose())
         else if (mat) (mat as THREE.Material).dispose()
       })
+      envRT.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === conteneur) conteneur.removeChild(renderer.domElement)
     }

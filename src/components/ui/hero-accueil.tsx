@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { Bouton } from '@/components/ui/bouton'
 import { CarrouselDefilant } from '@/components/ui/carrousel-defilant'
 import type { Spot } from '@/types/spot'
+import type { Lieu } from '@/types/lieu'
 
 interface Action {
   label: string
@@ -20,6 +21,10 @@ interface Props {
   /** Spots réels de la base vérifiée, proposés à la découverte */
   spots?: Spot[]
   onChoisirSpot?: (spot: Spot) => void
+  /** Spots likés par le rider, pour les retrouver sans les rechercher */
+  favoris?: Lieu[]
+  onChoisirFavori?: (favori: Lieu) => void
+  onRetirerFavori?: (id: string) => void
   className?: string
 }
 
@@ -45,6 +50,9 @@ export function HeroAccueil({
   note,
   spots = [],
   onChoisirSpot,
+  favoris = [],
+  onChoisirFavori,
+  onRetirerFavori,
   className,
 }: Props) {
   const reduit = useReducedMotion()
@@ -109,6 +117,49 @@ export function HeroAccueil({
           </motion.p>
         )}
       </motion.div>
+
+      {favoris.length > 0 && (
+        <motion.div {...anim} transition={{ ...RESSORT, delay: 0.24 }} className="mt-14">
+          <p className="mb-3 px-2 font-mono text-[10px] tracking-[0.22em] text-dim">MES SPOTS FAVORIS</p>
+
+          <CarrouselDefilant>
+            {favoris.map((favori) => (
+              <motion.div
+                key={favori.id}
+                whileHover={reduit ? undefined : { y: -4 }}
+                transition={{ duration: 0.25 }}
+                className="group relative flex w-[13.5rem] shrink-0 flex-col justify-between rounded-2xl border border-line/70 bg-surface/40 p-4 text-left transition-colors hover:border-foam/30 hover:bg-surface/70"
+                style={{ minHeight: '8.5rem' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onChoisirFavori?.(favori)}
+                  className="flex flex-1 flex-col text-left"
+                >
+                  <h3 className="pr-7 font-display text-[15px] leading-tight font-semibold text-foam">
+                    {favori.nom}
+                  </h3>
+                  <p className="mt-1 text-[12px] text-dim">
+                    {[favori.localite, favori.pays].filter(Boolean).join(' · ')}
+                  </p>
+                </button>
+                <span className="mt-4 font-mono text-[10px] tracking-wide text-muted">
+                  {favori.type?.length ? favori.type.join(' · ') : 'lieu liké'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onRetirerFavori?.(favori.id)}
+                  aria-label={`Retirer ${favori.nom} de mes spots favoris`}
+                  title="Retirer des favoris"
+                  className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-[15px] leading-none text-stop/80 transition-colors hover:bg-stop/10 hover:text-stop"
+                >
+                  ♥
+                </button>
+              </motion.div>
+            ))}
+          </CarrouselDefilant>
+        </motion.div>
+      )}
 
       {spots.length > 0 && (
         <motion.div {...anim} transition={{ ...RESSORT, delay: 0.28 }} className="mt-14">

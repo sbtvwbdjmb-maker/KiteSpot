@@ -71,6 +71,10 @@ export async function fetchMeteo(lat: number, lon: number): Promise<MeteoSpot> {
   url.searchParams.set('forecast_days', '7')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
+  // Le rider est sur l'eau : on force la maille au-dessus de la mer plutôt que
+  // la cellule terrestre par défaut. Moins de rugosité = vent moyen plus réaliste
+  // et facteur de rafales plus juste pour un spot côtier.
+  url.searchParams.set('cell_selection', 'sea')
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error('Open-Meteo a refusé la requête météo')
@@ -130,6 +134,8 @@ export async function fetchVentActuel(lat: number, lon: number): Promise<VentAct
   url.searchParams.set('current', 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m')
   url.searchParams.set('wind_speed_unit', 'kn')
   url.searchParams.set('timezone', 'auto')
+  // Cohérent avec fetchMeteo : vent au-dessus de l'eau pour les vignettes de spots.
+  url.searchParams.set('cell_selection', 'sea')
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error('Open-Meteo a refusé la requête vent')

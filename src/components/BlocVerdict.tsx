@@ -80,12 +80,14 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
               <motion.h2
                 {...anim}
                 transition={{ duration: 0.5, delay: 0.05 }}
-                className="mt-2 font-display text-[clamp(2.4rem,7vw,3.9rem)] leading-[0.95] font-bold tracking-tight"
+                className="lisible-media mt-2 font-display text-[clamp(2.4rem,7vw,3.9rem)] leading-[0.95] font-bold tracking-tight"
                 style={{ color: 'var(--verdict)' }}
               >
                 {analyse.verdict.titre}
               </motion.h2>
-              <p className="mt-1 text-[14px] text-muted">{analyse.verdict.sousTitre}</p>
+              <p className="lisible-media mt-1 text-[14px] font-medium text-foam">
+                {analyse.verdict.sousTitre}
+              </p>
 
               <div className="mt-5 flex items-baseline gap-3">
                 <span className="tabular font-mono text-4xl font-medium text-foam">
@@ -106,7 +108,7 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
             <motion.dl
               {...anim}
               transition={{ duration: 0.5, delay: 0.18 }}
-              className="mt-7 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4"
+              className="lisible-media mt-7 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4"
             >
               {analyse.lectures.map((lecture) => {
                 // Un jugement se lit en toutes lettres : on le compose en
@@ -126,11 +128,11 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
                         {lecture.valeur}
                       </span>
                       {!estJugement && (
-                        <span className="ml-1 font-mono text-[11px] text-muted">{lecture.unite}</span>
+                        <span className="ml-1 font-mono text-[11px] text-foam/70">{lecture.unite}</span>
                       )}
                     </dd>
                     {/* Sous le jugement, la mesure qui l'a produit reste lisible */}
-                    <dt className="mt-0.5 truncate font-mono text-[10px] text-dim">
+                    <dt className="mt-0.5 truncate font-mono text-[10px] text-foam/70">
                       {estJugement ? (lecture.detail ?? lecture.unite) : lecture.detail}
                     </dt>
                   </div>
@@ -153,9 +155,9 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
       </div>
 
       {analyse.alertes.length > 0 && (
-        <ul className="mt-8 space-y-2.5 border-l border-line/70 pl-4">
+        <ul className="lisible-media mt-8 space-y-2.5 border-l border-line/70 pl-4">
           {analyse.alertes.map((alerte) => (
-            <li key={alerte} className="flex gap-2.5 text-[13px] leading-snug text-muted">
+            <li key={alerte} className="flex gap-2.5 text-[13px] font-medium leading-snug text-foam">
               <span aria-hidden className="shrink-0 text-warn">▲</span>
               {alerte}
             </li>
