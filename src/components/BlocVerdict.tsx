@@ -4,6 +4,8 @@ import type { AnalyseSport } from '../lib/sport'
 import type { Lieu } from '../types/lieu'
 import { CadranVent } from './CadranVent'
 import { analyserDirection } from '../lib/direction'
+import { Pictogramme } from '@/components/ui/pictogramme'
+import { TriangleAlert } from 'lucide-react'
 
 interface Props {
   lieu: Lieu
@@ -113,9 +115,7 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
                 const estJugement = !/[\d~]/.test(lecture.valeur)
                 return (
                   <div key={lecture.icone + lecture.unite} className="min-w-0">
-                    <span aria-hidden className="text-[22px] leading-none">
-                      {lecture.icone}
-                    </span>
+                    <Pictogramme nom={lecture.icone} className="text-dim" />
                     <dd className="mt-1.5 min-w-0">
                       <span
                         className={
@@ -154,15 +154,14 @@ export function BlocVerdict({ lieu, analyse, ventNoeuds, rafalesNoeuds, heurePro
       </div>
 
       {analyse.alertes.length > 0 && (
-        <ul className="mt-7 space-y-2">
+        <ul className="mt-8 space-y-2.5 border-l border-line/70 pl-4">
           {analyse.alertes.map((alerte) => (
-            <li
-              key={alerte}
-              className="flex gap-2.5 rounded-lg border border-line/60 bg-surface/50 px-3.5 py-2.5 text-[13px] leading-snug text-foam/80"
-            >
-              <span aria-hidden className="text-warn">
-                ▲
-              </span>
+            <li key={alerte} className="flex gap-2.5 text-[13px] leading-snug text-muted">
+              <TriangleAlert
+                aria-hidden
+                strokeWidth={1.5}
+                className="mt-px h-[15px] w-[15px] shrink-0 text-warn"
+              />
               {alerte}
             </li>
           ))}

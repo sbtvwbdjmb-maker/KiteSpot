@@ -31,7 +31,7 @@ export function Provenance({
   const ajustable = lieu.sourceOrientation === 'estimee' || lieu.sourceOrientation === 'manuelle' || lieu.sourceOrientation === 'inconnue'
 
   return (
-    <section className="rounded-2xl border border-line/60 bg-surface/25 p-4 sm:p-5">
+    <section className="border-t border-line/60 pt-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-mono text-[11px] tracking-[0.22em] text-muted">SOURCES</h3>
         <button

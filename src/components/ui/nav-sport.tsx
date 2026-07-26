@@ -1,6 +1,9 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { Waves, Wind } from 'lucide-react'
 import { SPORTS, type Sport } from '@/lib/sport'
+
+const ICONE_SPORT = { kite: Wind, surf: Waves } as const
 
 interface Props {
   actif: Sport
@@ -39,10 +42,16 @@ export function NavSport({ actif, onChanger, className }: Props) {
                 className="absolute inset-0 rounded-full bg-raised"
               />
             )}
-            <span className={cn('relative z-10', estActif ? 'text-foam' : 'text-muted')}>
-              <span aria-hidden className="mr-1.5">
-                {sport.icone}
-              </span>
+            <span
+              className={cn(
+                'relative z-10 inline-flex items-center gap-1.5',
+                estActif ? 'text-foam' : 'text-muted',
+              )}
+            >
+              {(() => {
+                const Icone = ICONE_SPORT[sport.id]
+                return <Icone aria-hidden strokeWidth={1.5} className="h-[15px] w-[15px]" />
+              })()}
               {sport.label}
             </span>
           </button>

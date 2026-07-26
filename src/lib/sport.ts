@@ -12,14 +12,17 @@ import { ecartAngulaire } from './geo'
 
 export type Sport = 'kite' | 'surf'
 
-export const SPORTS: { id: Sport; label: string; icone: string }[] = [
-  { id: 'kite', label: 'Kite', icone: '🪁' },
-  { id: 'surf', label: 'Surf', icone: '🏄' },
+export const SPORTS: { id: Sport; label: string }[] = [
+  { id: 'kite', label: 'Kite' },
+  { id: 'surf', label: 'Surf' },
 ]
+
+/** Pictogramme d'une lecture — nom symbolique, l'icône est choisie à l'affichage */
+export type CleIcone = 'vent' | 'direction' | 'voile' | 'temperature' | 'vague' | 'periode'
 
 /** Une valeur affichée dans le bandeau principal */
 export interface Lecture {
-  icone: string
+  icone: CleIcone
   valeur: string
   unite: string
   detail?: string
@@ -77,13 +80,13 @@ export function analyserPourSport(
       directionHouleDeg: null,
       lectures: [
         {
-          icone: '💨',
+          icone: 'vent',
           valeur: String(Math.round(meteoHoraire.ventNoeuds)),
           unite: 'nds',
           detail: `rafales ${Math.round(meteoHoraire.rafalesNoeuds)}`,
         },
         {
-          icone: '🧭',
+          icone: 'direction',
           // On juge la direction au lieu de laisser le rider traduire « ONO »
           valeur: a.direction ? qualiteEnMots(a.direction.score, 'kite') : '—',
           unite: 'direction',
@@ -92,7 +95,7 @@ export function analyserPourSport(
             : 'non évaluée',
         },
         {
-          icone: '🪁',
+          icone: 'voile',
           valeur: a.voile.tailleRetenue
             ? String(a.voile.tailleRetenue)
             : a.voile.tailleIdeale
@@ -101,7 +104,7 @@ export function analyserPourSport(
           unite: 'm²',
           detail: a.voile.tailleRetenue ? 'dans ton quiver' : 'estimation',
         },
-        { icone: '🌡️', valeur: `${Math.round(meteoHoraire.temperatureC)}°`, unite: 'air' },
+        { icone: 'temperature', valeur: `${Math.round(meteoHoraire.temperatureC)}°`, unite: 'air' },
       ],
     }
   }
@@ -117,14 +120,14 @@ export function analyserPourSport(
   const lectures: Lecture[] = []
   if (marineHoraire) {
     lectures.push({
-      icone: '🌊',
+      icone: 'vague',
       valeur:
         marineHoraire.hauteurVaguesM !== null ? marineHoraire.hauteurVaguesM.toFixed(1) : '—',
       unite: 'm',
       detail: marineHoraire.hauteurVaguesM !== null ? 'hauteur' : 'indisponible',
     })
     lectures.push({
-      icone: '⏱️',
+      icone: 'periode',
       valeur:
         marineHoraire.periodeHouleS !== null
           ? marineHoraire.periodeHouleS.toFixed(0)
@@ -136,7 +139,7 @@ export function analyserPourSport(
     })
     const houle = marineHoraire.directionHouleDeg
     lectures.push({
-      icone: '🧭',
+      icone: 'direction',
       valeur:
         houle !== null && lieu.orientation !== null
           ? qualiteEnMots(scoreDirectionHoule(houle, lieu.orientation), 'surf')
@@ -151,7 +154,7 @@ export function analyserPourSport(
     })
   }
   lectures.push({
-    icone: '💨',
+    icone: 'vent',
     valeur: String(Math.round(meteoHoraire.ventNoeuds)),
     unite: 'nds',
     detail: a.qualiteVent

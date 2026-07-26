@@ -326,8 +326,8 @@ export default function App() {
                 {analyse.criteres.length > 0 && <Criteres criteres={analyse.criteres} />}
 
                 {lieu.acces && (
-                  <section className="rounded-2xl border border-line/70 bg-surface/40 p-4 sm:p-5">
-                    <h3 className="mb-3 font-mono text-[11px] tracking-[0.22em] text-muted">LE SPOT</h3>
+                  <section className="border-t border-line/60 pt-6">
+                    <h3 className="mb-4 font-mono text-[11px] tracking-[0.22em] text-muted">LE SPOT</h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       {lieu.type && <Info label="Type d’eau" valeur={lieu.type.join(', ')} />}
                       {lieu.niveau && <Info label="Niveau requis" valeur={lieu.niveau} />}

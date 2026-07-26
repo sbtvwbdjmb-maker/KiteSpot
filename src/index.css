@@ -2,28 +2,32 @@
 
 /* ---------------------------------------------------------------------------
    KiteSpot — système de tokens
-   Direction : instrument de bord maritime. Fond « eau profonde », cartes en
-   verre, et une couleur d'accent qui n'est pas décorative : c'est la réponse.
+   Direction : carte marine de nuit. Bleu d'encre plutôt que noir, papier
+   chaud pour le texte, et des accents empruntés aux pavillons de
+   signalisation — sourds et lavés, jamais fluorescents.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-abyss: #04141c;
-  --color-deep: #072530;
-  --color-surface: #0c313f;
-  --color-raised: #114150;
-  --color-line: #1b5063;
-  --color-foam: #e8f4f2;
-  --color-muted: #86a9b2;
-  --color-dim: #587b85;
+  /* Bleus d'encre : franchement bleus, pas noir-vert */
+  --color-abyss: #0b1622;
+  --color-deep: #12202f;
+  --color-surface: #1a2a3b;
+  --color-raised: #24384c;
+  --color-line: #33495f;
 
-  /* Couleurs de verdict — sémantiques, jamais décoratives */
-  --color-go: #2fe3a0;
-  --color-warn: #ffc247;
-  --color-orange: #ff9347;
-  --color-stop: #ff6a5a;
+  /* Texte : blanc cassé chaud, pas blanc glacé. C'est ce qui réchauffe l'écran. */
+  --color-foam: #eee9df;
+  --color-muted: #a3aab0;
+  --color-dim: #737f8c;
+
+  /* Verdict — pigments de pavillon, désaturés. Aucun néon. */
+  --color-go: #5aa87b;
+  --color-warn: #d9a441;
+  --color-orange: #c9743f;
+  --color-stop: #b8514a;
 
   /* Terre / mer du cadran : la terre reste sourde, c'est un repère, pas un sujet */
-  --color-land: #14302a;
-  --color-sea: #072634;
+  --color-land: #22301f;
+  --color-sea: #12293c;
 
   --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
@@ -51,16 +55,45 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* La page prend la couleur de la réponse : on comprend avant de lire */
+/**
+ * Fond de page. La grande nappe radiale colorée a été retirée : c'est la
+ * signature visuelle des maquettes générées, et elle noyait les données.
+ * À la place, un dégradé vertical sobre et un grain très fin, comme le papier
+ * d'une carte marine. Le verdict ne teinte plus que le liseré supérieur.
+ */
 .ambiance {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(90rem 45rem at 50% -12%, color-mix(in oklab, var(--verdict) 22%, transparent), transparent 65%),
-    radial-gradient(50rem 40rem at 110% 8%, color-mix(in oklab, var(--verdict) 10%, transparent), transparent 60%);
-  transition: background 900ms ease;
+    linear-gradient(180deg, var(--color-deep) 0%, var(--color-abyss) 34%, var(--color-abyss) 100%);
+}
+
+/* Grain : casse l'aplat parfait qui fait « rendu 3D » */
+.ambiance::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Liseré haut : la seule trace de couleur du verdict sur le fond */
+.ambiance::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--verdict) 55%, transparent) 30%,
+    color-mix(in oklab, var(--verdict) 55%, transparent) 70%,
+    transparent
+  );
+  transition: background 700ms ease;
 }
 
 /* Chiffres tabulaires partout où une valeur mesurée est affichée */
@@ -82,16 +115,15 @@ body {
 .halo-cadran::before {
   content: '';
   position: absolute;
-  inset: -18%;
+  inset: -12%;
   z-index: -1;
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 45%,
-    color-mix(in oklab, var(--verdict) 16%, transparent) 0%,
-    color-mix(in oklab, var(--verdict) 6%, transparent) 45%,
-    transparent 72%
+    color-mix(in oklab, var(--verdict) 8%, transparent) 0%,
+    transparent 62%
   );
-  filter: blur(18px);
+  filter: blur(22px);
   transition: background 900ms ease;
   pointer-events: none;
 }
